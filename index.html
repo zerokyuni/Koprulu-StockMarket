@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>코프룰루 주식장</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideInUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes onairGlow {
+            0% { text-shadow: 0 0 5px #ef4444, 0 0 10px #ef4444; transform: scale(1); }
+            50% { text-shadow: 0 0 15px #ef4444, 0 0 25px #ef4444; transform: scale(1.1) rotate(-3deg); }
+            100% { text-shadow: 0 0 5px #ef4444, 0 0 10px #ef4444; transform: scale(1); }
+        }
+        .animate-onair {
+            animation: onairGlow 0.5s infinite;
+        }
+        @keyframes fastBlink {
+            0%, 100% { opacity: 1; text-shadow: 0 0 5px #ef4444; }
+            50% { opacity: 0.3; text-shadow: 0 0 15px #ef4444, 0 0 20px #ef4444; transform: scale(1.05); }
+        }
+        .animate-fast-blink {
+            animation: fastBlink 0.25s infinite;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6); 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(71, 85, 105, 0.8); 
+            border-radius: 2px;
+        }
+        button {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen bg-slate-900 text-slate-100 flex flex-col font-sans overflow-hidden">
+    
+    <!-- 헤더 영역 -->
+    <header class="shrink-0 bg-slate-800 border-b border-slate-700 flex flex-col z-20">
+        <!-- 상단 타이틀 및 자산 -->
+        <div class="p-2 lg:px-4 lg:py-3 flex justify-between items-center bg-slate-800">
+            <h1 class="text-sm lg:text-xl font-black tracking-tight text-white flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 lg:w-6 lg:h-6"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+                코프룰루 주식장
+            </h1>
+            <div class="text-right flex gap-3 lg:gap-6">
+                <div class="flex flex-col items-end">
+                    <span class="text-[9px] lg:text-xs text-slate-400">보유 미네랄(현금)</span>
+                    <span id="cash-display" class="text-[11px] lg:text-base font-bold text-white">0</span>
+                </div>
+                <div class="flex flex-col items-end">
+                    <span class="text-[9px] lg:text-xs text-slate-400">총 자산</span>
+                    <span id="total-asset-display" class="text-[11px] lg:text-base font-bold text-indigo-300">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🚨 사채 상환 경고 바 -->
+        <div id="loan-bar" class="hidden relative h-8 lg:h-10 bg-red-950/90 border-t border-red-900 shadow-inner overflow-hidden">
+            <!-- 프로그레스 바 -->
+            <div id="loan-progress-fill" class="absolute top-0 left-0 h-full bg-red-700/50 transition-all duration-1000 ease-linear" style="width: 0%;"></div>
+            
+            <!-- 텍스트 컨텐츠 -->
+            <div class="relative z-10 w-full h-full flex justify-between items-center px-2 lg:px-4 py-1">
+                <div class="flex items-center gap-1.5 text-[10px] lg:text-sm text-red-200 truncate shrink-0">
+                    <span id="loan-warning-text" class="font-black text-red-500 animate-pulse">🚨 수금까지:</span>
+                    <span id="loan-timer" class="font-bold text-white w-6 lg:w-10 text-center">60초</span>
+                    <span class="opacity-80 border-l border-red-800/50 pl-1.5 ml-1.5 hidden sm:inline">이번 턴 갚을 돈:</span>
+                    <span class="opacity-80 border-l border-red-800/50 pl-1.5 ml-1.5 sm:hidden">상환액:</span>
+                    <span id="loan-due" class="font-black text-white">0</span>
+                </div>
+                <div class="flex items-center gap-1 text-[9px] lg:text-sm text-red-300/80 shrink-0 ml-2">
+                    <span>원금: </span><span id="loan-principal" class="text-red-200">1,000,000</span>
+                    <span class="border-l border-red-800/50 pl-1 ml-1">이자: <span id="loan-interest" class="text-red-400 font-bold">0</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 뉴스 & 타이머 티커 (최대 두 줄 허용) -->
+        <div class="flex items-stretch min-h-[3rem] lg:min-h-[3.5rem] bg-slate-900 border-t border-slate-700">
+            <!-- 타이머 -->
+            <div id="timer-display" class="flex items-center px-1.5 lg:px-4 bg-slate-800 border-r border-slate-700 z-10 font-black text-[10px] lg:text-sm w-20 lg:w-32 justify-center shrink-0">
+                <!-- JS에서 채움 -->
+            </div>
+            
+            <!-- 뉴스 텍스트 -->
+            <div class="flex-1 flex items-center px-2 lg:px-4 py-1 lg:py-2 overflow-hidden relative" id="news-container">
+                <!-- JS에서 채움 -->
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 콘텐츠 -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        
+        <!-- 상단/좌측: 시장 동향 (차트 + 업종 지수) -->
+        <div class="flex flex-col shrink-0 lg:w-[350px] border-b lg:border-b-0 lg:border-r border-slate-700 bg-slate-900/50 pb-2 lg:pb-4 lg:p-4 overflow-y-auto hide-scrollbar lg:gap-4">
+            <!-- 통합 그래프 -->
+            <div class="h-28 lg:h-56 p-2 lg:p-0 relative shrink-0">
+                <div id="chart-container" class="w-full h-full bg-slate-800 rounded-lg p-1 lg:p-3 border lg:border-slate-700">
+                    <!-- SVG JS에서 채움 -->
+                </div>
+                <!-- 범례 -->
+                <div id="legend-container" class="absolute bottom-3 left-0 right-0 lg:bottom-4 lg:left-4 lg:right-4 flex flex-wrap justify-center gap-3 pointer-events-none opacity-90 bg-slate-900/40 rounded px-2 mx-4 lg:mx-0 pb-0.5 lg:pb-1">
+                    <!-- JS에서 채움 -->
+                </div>
+            </div>
+            
+            <!-- 업종별 지수 -->
+            <div id="sector-status-container" class="flex lg:flex-col overflow-x-auto lg:overflow-y-visible gap-2 px-2 lg:px-0 hide-scrollbar snap-x snap-mandatory pb-1 lg:pb-0 justify-center lg:justify-start">
+                <!-- JS에서 채움 -->
+            </div>
+        </div>
+
+        <!-- 하단/우측: 종목 거래 리스트 (업종별 3단 세로 배치) -->
+        <div id="companies-container" class="flex-1 flex gap-1 lg:gap-4 p-1 lg:p-4 overflow-hidden bg-slate-900 pb-2 lg:pb-4">
+            <!-- JS에서 채움 (3단 컬럼) -->
+        </div>
+    </div>
+
+    <!-- 플로팅 알림 -->
+    <div id="notifications-container" class="fixed bottom-4 left-2 right-2 flex flex-col gap-2 z-50 pointer-events-none"></div>
+
+    <!-- 게임 시작 오버레이 -->
+    <div id="start-overlay" class="fixed inset-0 bg-slate-900/95 z-[110] flex flex-col items-center justify-center p-6 backdrop-blur-md text-center">
+        <h1 class="text-3xl sm:text-4xl font-black mb-4 text-blue-400 drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]">코프룰루 주식장</h1>
+        
+        <div class="bg-slate-800/80 border border-slate-600 rounded-xl p-4 sm:p-5 max-w-sm mb-6 shadow-2xl text-left">
+            <p class="text-slate-200 text-xs sm:text-sm leading-relaxed mb-4">
+                당신은 켈모리안 조합의 악덕 사채업자에게 <strong class="text-white">1,000,000 미네랄</strong>을 빌려 주식장에 뛰어들었습니다.<br><br>
+                사채업자는 매 <strong class="text-red-400">60초마다 살인적인 이자와 원금 일부를 수금</strong>하러 옵니다. 수금일에 현금이 부족하면 보유 주식을 <strong class="text-red-500">전량 강제 매도</strong> 당합니다!
+            </p>
+            <p class="text-[10px] sm:text-xs text-slate-400 mb-4 pb-3 border-b border-slate-700">
+                * 팁: 매수/매도 버튼을 꾹 누르면 초고속 연속 거래가 가능합니다. 0.2초마다 바뀌는 시장을 지배하세요!
+            </p>
+
+            <div class="flex flex-col gap-2">
+                <div class="flex items-center gap-3 bg-slate-900/50 p-2.5 rounded-lg border border-yellow-500/30">
+                    <span class="text-yellow-400 font-black text-sm sm:text-base shrink-0">🏆 승리:</span>
+                    <span class="text-white text-xs sm:text-sm font-bold">사채 전액 상환 및 총 자산 3,000,000 돌파</span>
+                </div>
+                <div class="flex items-center gap-3 bg-slate-900/50 p-2.5 rounded-lg border border-red-500/30">
+                    <span class="text-red-500 font-black text-sm sm:text-base shrink-0">☠️ 패배:</span>
+                    <span class="text-white text-xs sm:text-sm font-bold">수금액 미달 (가진걸 다 팔아도 못 갚을 때)</span>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="startGame()" class="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.5)] active:scale-95 transition-transform text-lg w-full max-w-sm border border-blue-400/50">
+            사채 쓰고 투입하기
+        </button>
+    </div>
+
+    <!-- 게임 오버/승리 오버레이 -->
+    <div id="game-overlay" class="fixed inset-0 bg-slate-900/95 z-[100] hidden flex-col items-center justify-center p-6 backdrop-blur-sm text-center">
+        <h2 id="overlay-title" class="text-3xl font-black mb-4"></h2>
+        <p id="overlay-desc" class="text-slate-300 mb-8 text-sm whitespace-pre-line leading-relaxed"></p>
+        <button onclick="restartGame()" class="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.5)] active:scale-95 transition-transform text-lg">처음으로 돌아가기</button>
+    </div>
+
+    <script>
+        // --- 유틸리티 ---
+        const formatMoney = (amount) => new Intl.NumberFormat('ko-KR').format(Math.floor(amount));
+        const randomRange = (min, max) => Math.random() * (max - min) + min;
+        
+        const getColorClass = (change) => {
+            if (change > 0) return 'text-red-500';
+            if (change < 0) return 'text-blue-500';
+            return 'text-gray-500';
+        };
+
+        const SVGS = {
+            radio: `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"></circle><path d="M4.9 19.1C3.1 17.3 2 14.8 2 12c0-2.8 1.1-5.3 2.9-7.1"></path><path d="M19.1 4.9C20.9 6.7 22 9.2 22 12c0 2.8-1.1 5.3-2.9 7.1"></path><path d="M7.7 16.3c-.9-.9-1.5-2.2-1.5-3.5 0-1.3.6-2.6 1.5-3.5"></path><path d="M16.3 7.7c.9.9 1.5 2.2 1.5 3.5 0 1.3-.6 2.6-1.5 3.5"></path></svg>`,
+            trendingUp: `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-0.5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>`,
+            trendingDown: `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-0.5"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline><polyline points="16 17 22 17 22 11"></polyline></svg>`,
+            alert: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`
+        };
+
+        // --- 데이터 (스타크래프트 테마) ---
+        const SECTORS = ['테란', '저그', '프로토스'];
+        const MAX_HISTORY = 100;
+
+        const SECTOR_COLORS = {
+            '테란': '#3b82f6',
+            '저그': '#a855f7',
+            '프로토스': '#eab308'
+        };
+
+        const COMPANY_NAMES = {
+            '테란': ['마린건설', '시즈정밀', '벙커산업', '골리앗기계', 'SCV토건', '벌처모터스', '배틀엔지니어', '레이스항공', '고스트전자', '팩토리중공업', '배럭스건설', '메딕제약', '파이어뱃가스'],
+            '저그': ['퀸메디', '울트라제약', '뮤탈바이오', '저글링생명', '해처리세포', '디파질병랩', '스포어연구소', '오버로드유전', '성큰메디컬', '히드라약품', '크립바이오', '럴커엔지니어', '스콜지항공'],
+            '프로토스': ['커세어웹', '질럿테크', '드라군IT', '템플러네트웍', '파일런통신', '넥서스컴퓨팅', '리버소프트', '아비터클라우드', '프로브AI', '옵저버데이터', '캐리어컴', '포지보안', '게이트웨이모빌']
+        };
+
+        const NEWS_POOL = [
+            // 노이즈
+            { type: 'NOISE', text: "테란 자치령, '오늘 저녁 메뉴는 뽀글이' 중대 발표... 시민들 환호" },
+            { type: 'NOISE', text: "어느 마린, 스팀팩 잘못 맞고 3박 4일째 마라톤 중... 기네스북 등재 조짐" },
+            { type: 'NOISE', text: "프로브, 일하기 싫어 파일런 뒤에 숨었다가 넥서스 AI에게 발각" },
+            { type: 'NOISE', text: "오버로드, '인구수 꽉 차서 무겁다' 폭탄 다이어트 선언" },
+            { type: 'NOISE', text: "저글링 연대, '우린 왜 항상 몸빵인가' 본진 앞에서 대규모 시위 예고" },
+            { type: 'NOISE', text: "질럿, 발업 연구 안 돼서 출근 지각... 사유서 제출해 논란" },
+            { type: 'NOISE', text: "건설로봇(SCV) 노조, '일당 5미네랄 인상' 요구하며 무기한 파업 돌입" },
+            { type: 'NOISE', text: "고위 기사, 사이오닉 스톰으로 컵라면 물 끓이다 3도 화상 입어" },
+            { type: 'NOISE', text: "울트라리스크, 좁은 골목길에 끼여 3일째 구조 대기 중... 주민들 불편 호소" },
+            { type: 'NOISE', text: "핵폭발 오인 신고 폭주... 알고보니 맹독충 터지는 소리로 밝혀져" },
+            { type: 'NOISE', text: "의무관(메딕), '스팀팩 작작 맞아라' 마린들에게 병원 경고문 부착" },
+            { type: 'NOISE', text: "관측선(옵저버), 사생활 침해 논란으로 전면 수리 센터 입고" },
+            
+            // 테란
+            { type: 'SECTOR', sector: '테란', impact: [0.15, 0.35], text: "[단독] SCV토건, 미네랄 채취 속도 200% 증가하는 혁신 다이아 드릴 개발!" },
+            { type: 'SECTOR', sector: '테란', impact: [0.20, 0.40], text: "[속보] 시즈정밀, 사거리 3배 늘어난 '슈퍼 울트라 시즈모드 엔진' 상용화 성공" },
+            { type: 'SECTOR', sector: '테란', impact: [0.20, 0.45], text: "[속보] 배틀엔지니어, 야마토 포 발사 대기시간 0.5초로 단축하는 신기술 발표!" },
+            { type: 'SECTOR', sector: '테란', impact: [0.15, 0.35], text: "마린건설, 신도시 '뉴 코할' 프로젝트 수주 성공! 매출 대박 조짐" },
+            { type: 'SECTOR', sector: '테란', impact: [-0.30, -0.15], text: "벙커산업 부실 공사 논란... 저글링 3마리 발톱에 벙커 와르르 무너져" },
+            { type: 'SECTOR', sector: '테란', impact: [-0.40, -0.20], text: "골리앗기계, 부품 결함으로 대공 미사일이 아군 배틀크루저 격추해 주가 폭락" },
+            { type: 'SECTOR', sector: '테란', impact: [-0.45, -0.25], text: "고스트전자, 핵 미사일 좌표 오류로 아군 사령부 타격... 사상 최악의 참사" },
+            { type: 'SECTOR', sector: '테란', impact: [-0.35, -0.15], text: "레이스항공, 종이비행기보다 못한 내구성 논란에 대규모 리콜 사태 발생" },
+
+            // 저그
+            { type: 'SECTOR', sector: '저그', impact: [0.20, 0.40], text: "[속보] 퀸메디, 브루들링 부작용 없는 '완벽한 기생충 다이어트약' 글로벌 히트!" },
+            { type: 'SECTOR', sector: '저그', impact: [0.15, 0.35], text: "해처리세포, 라바 생성 속도 5배 폭증하는 초영양 크립 앰플 대량 생산" },
+            { type: 'SECTOR', sector: '저그', impact: [0.25, 0.45], text: "[속보] 저글링생명, 발업을 넘어선 '비행 저글링' 유전자 조작 성공! 생태계 파괴" },
+            { type: 'SECTOR', sector: '저그', impact: [0.15, 0.35], text: "스포어연구소, 투명 유닛 100km 밖에서 감지하는 슈퍼 포자 상용화 돌입" },
+            { type: 'SECTOR', sector: '저그', impact: [-0.40, -0.20], text: "울트라제약, 신약 부작용으로 몸집만 커지고 지능은 퇴화... 대규모 임상 실패" },
+            { type: 'SECTOR', sector: '저그', impact: [-0.35, -0.15], text: "뮤탈바이오, 쓰리쿠션 공격 물질 유출 사고 발생... 연구소 및 인근 초토화" },
+            { type: 'SECTOR', sector: '저그', impact: [-0.45, -0.20], text: "디파질병랩, 아군도 감염시키는 통제불능 플레이그 유출 사태로 본진 궤멸" },
+            { type: 'SECTOR', sector: '저그', impact: [-0.35, -0.15], text: "크립바이오, 곰팡이 핀 불량 점막(크립) 유통으로 저그 연합으로부터 고소당해" },
+
+            // 프로토스
+            { type: 'SECTOR', sector: '프로토스', impact: [0.20, 0.50], text: "[속보] 커세어웹, 웹스 터지는 속도로 데이터 전송하는 6G '웹망' 기술 시연 성공!" },
+            { type: 'SECTOR', sector: '프로토스', impact: [0.15, 0.35], text: "아비터클라우드, 은폐 필드 기반의 완벽한 해킹 방어 클라우드 출시해 업계 발칵" },
+            { type: 'SECTOR', sector: '프로토스', impact: [0.20, 0.45], text: "[속보] 프로브AI, 미네랄 덩어리 자체를 텔레포트 시키는 넥서스 연동 기술 공개!" },
+            { type: 'SECTOR', sector: '프로토스', impact: [0.15, 0.35], text: "리버소프트, 스캐럽 불발탄 0% 달성하는 AI 타겟팅 패치 배포해 유저들 환호" },
+            { type: 'SECTOR', sector: '프로토스', impact: [-0.45, -0.20], text: "드라군IT, 신규 AI 칩셋 결함으로 제자리걸음만 반복... 전량 리콜" },
+            { type: 'SECTOR', sector: '프로토스', impact: [-0.40, -0.25], text: "파일런통신, 원인 모를 대규모 정전 사태로 전 프로토스 전력망 및 와이파이 마비" },
+            { type: 'SECTOR', sector: '프로토스', impact: [-0.45, -0.20], text: "템플러네트웍, 과도한 사이오닉 에너지 사용으로 본사 공중분해... 임원진 행방불명" },
+            { type: 'SECTOR', sector: '프로토스', impact: [-0.35, -0.15], text: "캐리어컴, 인터셉터 출격 시 엔진 꺼지는 치명적 결함 발견... 우주 쓰레기 전락" }
+        ];
+
+        // --- 상태 관리 ---
+        const INITIAL_LOAN = 1000000;
+        const CYCLE_TIME = 60; // 60초마다 수금
+        const GOAL_ASSET = 3000000; // 300만 미네랄 달성 시 승리
+
+        let state = {
+            cash: INITIAL_LOAN, 
+            portfolio: {}, 
+            companies: [],
+            sectorData: {},
+            news: { text: "시뮬레이션이 시작되었습니다. 마켓 속보를 주목하세요.", type: 'NOISE' },
+            notifications: [],
+            timerDisplay: 5,
+            pendingEvents: { impact: null, addNew: false },
+            status: 'START',
+            
+            // 사채 시스템
+            loan: INITIAL_LOAN,
+            interest: 0,
+            repaymentTimer: CYCLE_TIME,
+            repaymentCycleAmount: 250000 // 한 턴당 갚을 원금
+        };
+
+        // 루프 관리를 위한 변수
+        let gameInterval = null;
+        let timerInterval = null;
+
+        // 꾹 누르기(연속 매매)를 위한 타이머 변수
+        let holdTimeout = null;
+        let holdInterval = null;
+        let isTouching = false;
+
+        const generateCompany = (sector, basePrice = null) => {
+            const names = COMPANY_NAMES[sector];
+            const name = names[Math.floor(Math.random() * names.length)];
+            const price = basePrice || Math.floor(randomRange(1000, 50000));
+            return {
+                id: Math.random().toString(36).substr(2, 9),
+                name: name,
+                sector: sector,
+                price: price,
+                prevPrice: price,
+                history: Array(MAX_HISTORY).fill(price),
+                volatility: randomRange(0.002, 0.01)
+            };
+        };
+
+        function initCompaniesDOM() {
+            const html = SECTORS.map(sector => `
+                <div class="flex-1 flex flex-col bg-slate-900/50 rounded lg:rounded-xl border border-slate-700/50 overflow-hidden min-w-0">
+                    <div class="p-1 lg:p-2 text-center font-black text-[10px] lg:text-base border-b border-slate-700/50 bg-slate-800/80 shadow-sm shrink-0 truncate" style="color: ${SECTOR_COLORS[sector]}">
+                        ${sector}
+                    </div>
+                    <div id="sector-list-${sector}" class="flex-1 overflow-y-auto custom-scrollbar p-1 lg:p-2 flex flex-col gap-1 lg:gap-2">
+                        <!-- 카드가 들어갈 자리 -->
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('companies-container').innerHTML = html;
+        }
+
+        function initSectorStatusDOM() {
+            const html = SECTORS.map(sector => `
+                <div class="snap-start shrink-0 w-[6rem] lg:w-full bg-slate-800 rounded-lg p-1.5 lg:p-3 border border-slate-700 flex flex-col lg:flex-row lg:justify-between items-center shadow-md transition-all" style="border-top-width: 3px; border-top-color: ${SECTOR_COLORS[sector]}">
+                    <span class="font-bold text-slate-300 text-[10px] lg:text-sm">${sector}</span>
+                    <div class="lg:text-right">
+                        <div id="sector-price-${sector}" class="text-[11px] lg:text-base font-black text-white mt-0.5 lg:mt-0">0</div>
+                        <div id="sector-diff-${sector}" class="flex items-center lg:justify-end text-[9px] lg:text-xs font-bold mt-0.5 lg:mt-0"></div>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('sector-status-container').innerHTML = html;
+        }
+
+        function init() {
+            SECTORS.forEach(sector => {
+                const count = 3;
+                let sectorTotal = 0;
+                for (let i = 0; i < count; i++) {
+                    let comp;
+                    do {
+                        comp = generateCompany(sector);
+                    } while (state.companies.some(c => c.name === comp.name));
+                    
+                    state.companies.push(comp);
+                    sectorTotal += comp.price;
+                }
+                state.sectorData[sector] = Array(MAX_HISTORY).fill(sectorTotal / count);
+            });
+            
+            initCompaniesDOM();
+            initSectorStatusDOM();
+            renderLegend();
+            
+            renderChart();
+            renderSectorStatus();
+            renderCompanies();
+            renderHeader();
+        }
+
+        // --- 렌더링 함수들 ---
+        function renderHeader() {
+            document.getElementById('cash-display').innerText = `${formatMoney(state.cash)}`;
+            
+            let stockValue = 0;
+            Object.entries(state.portfolio).forEach(([id, data]) => {
+                const comp = state.companies.find(c => c.id === id);
+                if (comp) stockValue += comp.price * data.quantity;
+            });
+            const totalAsset = state.cash + stockValue;
+            document.getElementById('total-asset-display').innerText = `${formatMoney(totalAsset)}`;
+
+            // 사채 경고 바 및 진행률 렌더링
+            const loanBar = document.getElementById('loan-bar');
+            if (state.loan > 0) {
+                loanBar.classList.remove('hidden');
+                loanBar.classList.add('block');
+                
+                const timerEl = document.getElementById('loan-timer');
+                const warningTextEl = document.getElementById('loan-warning-text');
+                const progressFill = document.getElementById('loan-progress-fill');
+                
+                timerEl.innerText = `${state.repaymentTimer}초`;
+                
+                // 프로그레스 바 계산
+                const progressPercent = ((CYCLE_TIME - state.repaymentTimer) / CYCLE_TIME) * 100;
+                progressFill.style.width = `${progressPercent}%`;
+
+                // 10초 이하 남았을 때 강렬한 경고 애니메이션
+                if (state.repaymentTimer <= 10) {
+                    timerEl.className = 'font-black text-white w-6 lg:w-10 text-center text-red-400';
+                    warningTextEl.className = 'font-black text-red-500 animate-fast-blink drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]';
+                } else {
+                    timerEl.className = 'font-bold text-white w-6 lg:w-10 text-center';
+                    warningTextEl.className = 'font-black text-red-500 animate-pulse';
+                }
+
+                let principalToPay = Math.min(state.loan, state.repaymentCycleAmount);
+                document.getElementById('loan-due').innerText = formatMoney(principalToPay + state.interest);
+                document.getElementById('loan-principal').innerText = formatMoney(state.loan);
+                document.getElementById('loan-interest').innerText = formatMoney(state.interest);
+            } else {
+                loanBar.classList.remove('block');
+                loanBar.classList.add('hidden');
+            }
+
+            // ONAIR 타이머
+            const timerEl = document.getElementById('timer-display');
+            if (state.timerDisplay === 'ONAIR!') {
+                timerEl.innerHTML = `<span class="text-red-500 flex items-center gap-1 animate-onair">
+                    ${SVGS.radio} ONAIR!
+                </span>`;
+            } else {
+                timerEl.innerHTML = `<span class="text-yellow-400 text-center w-full">생방송<br class="sm:hidden"/> ${state.timerDisplay}초 전</span>`;
+            }
+
+            const newsEl = document.getElementById('news-container');
+            const n = state.news;
+            let newsHtml = '';
+            
+            if (n.type === 'SECTOR') {
+                const isGood = n.isGood; 
+                const impactClass = isGood ? 'text-red-500' : 'text-blue-500';
+                const textClass = isGood ? 'text-red-400' : 'text-blue-400';
+                newsHtml = `<div class="text-[10px] lg:text-sm leading-tight lg:leading-normal font-medium whitespace-normal break-keep animate-[fadeIn_0.5s_ease-out] ${textClass}">
+                    <span class="mr-1 font-black ${impactClass}">[${n.sector}${isGood ? '호재' : '악재'}]</span>${n.text}
+                </div>`;
+            } else {
+                newsHtml = `<div class="text-[10px] lg:text-sm leading-tight lg:leading-normal font-medium whitespace-normal break-keep animate-[fadeIn_0.5s_ease-out] text-slate-300">${n.text}</div>`;
+            }
+            if (newsEl.dataset.text !== n.text) {
+                newsEl.innerHTML = newsHtml;
+                newsEl.dataset.text = n.text;
+            }
+        }
+
+        function renderLegend() {
+            const container = document.getElementById('legend-container');
+            container.innerHTML = SECTORS.map(sector => `
+                <div class="flex items-center gap-1 text-[9px] lg:text-xs font-bold text-slate-200">
+                    <div class="w-2 h-2 lg:w-3 lg:h-3 rounded-full shadow-[0_0_5px_rgba(255,255,255,0.5)]" style="background-color: ${SECTOR_COLORS[sector]}"></div>
+                    ${sector}
+                </div>
+            `).join('');
+        }
+
+        function renderChart() {
+            const width = 300;
+            const height = 100;
+            const data = state.sectorData;
+            
+            let globalMin = 100;
+            let globalMax = 100;
+            const normalizedData = {};
+
+            SECTORS.forEach(sector => {
+                const history = data[sector] || [];
+                const base = history[0] || 1;
+                const norm = history.map(val => (val / base) * 100);
+                normalizedData[sector] = norm;
+                globalMin = Math.min(globalMin, ...norm);
+                globalMax = Math.max(globalMax, ...norm);
+            });
+
+            const range = (globalMax - globalMin) || 1;
+            const padding = range * 0.1;
+            const yMin = globalMin - padding;
+            const yMax = globalMax + padding;
+            const yRange = yMax - yMin;
+
+            const y100 = height - ((100 - yMin) / yRange) * height;
+
+            let polylines = SECTORS.map(sector => {
+                const normHistory = normalizedData[sector];
+                if (!normHistory) return '';
+                const points = normHistory.map((val, i) => {
+                    const x = (i / (MAX_HISTORY - 1)) * width;
+                    const y = height - ((val - yMin) / yRange) * height;
+                    return `${x},${y}`;
+                }).join(' ');
+                
+                return `<polyline fill="none" stroke="${SECTOR_COLORS[sector]}" stroke-width="2" stroke-linejoin="round" points="${points}" class="opacity-90"></polyline>`;
+            }).join('');
+
+            const svg = `
+                <svg viewBox="0 0 ${width} ${height}" class="w-full h-full preserve-3d overflow-visible">
+                    <line x1="0" y1="${y100}" x2="${width}" y2="${y100}" stroke="#475569" stroke-width="1" stroke-dasharray="2 2"></line>
+                    ${polylines}
+                </svg>
+            `;
+            document.getElementById('chart-container').innerHTML = svg;
+        }
+
+        function renderSectorStatus() {
+            SECTORS.forEach(sector => {
+                const data = state.sectorData[sector] || [];
+                const current = data[data.length - 1] || 0;
+                const prev = data[data.length - 2] || current;
+                const diff = current - prev;
+                const diffPercent = prev > 0 ? (diff / prev) * 100 : 0;
+                const isUp = diff >= 0;
+                
+                const priceEl = document.getElementById(`sector-price-${sector}`);
+                if (priceEl) priceEl.textContent = formatMoney(current);
+
+                const diffEl = document.getElementById(`sector-diff-${sector}`);
+                if (diffEl) {
+                    diffEl.className = `flex items-center lg:justify-end text-[9px] lg:text-xs font-bold ${getColorClass(diff)} mt-0.5 lg:mt-0`;
+                    diffEl.innerHTML = `
+                        ${isUp ? SVGS.trendingUp : SVGS.trendingDown}
+                        ${diff > 0 ? '+' : ''}${diffPercent.toFixed(2)}%
+                    `;
+                }
+            });
+        }
+
+        function renderCompanies() {
+            const existingCards = document.querySelectorAll('.company-card');
+            existingCards.forEach(card => {
+                const id = card.dataset.id;
+                if (!state.companies.find(c => c.id === id)) {
+                    card.remove();
+                }
+            });
+
+            state.companies.forEach(company => {
+                const diff = company.price - company.prevPrice;
+                const diffPercent = company.prevPrice > 0 ? (diff / company.prevPrice) * 100 : 0;
+                const holding = state.portfolio[company.id]?.quantity || 0;
+                const avgPrice = state.portfolio[company.id]?.averagePrice || 0;
+                const returnRate = holding > 0 ? ((company.price - avgPrice) / avgPrice) * 100 : 0;
+
+                let card = document.getElementById(`card-${company.id}`);
+
+                if (!card) {
+                    const list = document.getElementById(`sector-list-${company.sector}`);
+                    if (!list) return;
+
+                    const cardHtml = `
+                        <div id="card-${company.id}" data-id="${company.id}" class="company-card bg-slate-800 rounded lg:rounded-lg border border-slate-700 p-1 lg:p-2 flex flex-col shadow-sm transition-all duration-300">
+                            <div class="font-bold text-white text-[9px] lg:text-sm truncate w-full" title="${company.name}">${company.name}</div>
+                            <div class="mt-0.5 lg:mt-1 flex flex-col lg:flex-row lg:justify-between lg:items-end">
+                                <span id="price-${company.id}" class="font-bold text-[10px] lg:text-sm ${getColorClass(diff)}">${formatMoney(company.price)}</span>
+                                <span id="diff-${company.id}" class="text-[8px] lg:text-xs font-medium ${getColorClass(diff)}">
+                                    ${diff > 0 ? '▲' : (diff < 0 ? '▼' : '-')} ${diffPercent.toFixed(1)}%
+                                </span>
+                            </div>
+                            <div id="holding-container-${company.id}" class="${holding > 0 ? 'flex' : 'hidden'} mt-1 lg:mt-2 bg-slate-900 rounded p-1 lg:p-1.5 justify-between items-center border border-slate-700">
+                                <span id="holding-qty-${company.id}" class="text-[8px] lg:text-xs font-bold text-slate-200">${holding}주</span>
+                                <span id="holding-rate-${company.id}" class="text-[8px] lg:text-xs font-bold ${getColorClass(returnRate)}">
+                                    ${returnRate > 0 ? '+' : ''}${returnRate.toFixed(1)}%
+                                </span>
+                            </div>
+                            <div class="flex gap-0.5 lg:gap-2 mt-1 lg:mt-2">
+                                <button oncontextmenu="return false;" onmousedown="startAction('buy', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('buy', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchcancel="stopAction(event)" class="flex-1 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white active:bg-red-600 py-1 lg:py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-red-500/30 select-none cursor-pointer">매수</button>
+                                <button id="sell-btn-${company.id}" oncontextmenu="return false;" onmousedown="startAction('sell', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('sell', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchcancel="stopAction(event)" ${holding <= 0 ? 'disabled' : ''} class="flex-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white active:bg-blue-600 disabled:opacity-20 disabled:hover:bg-blue-500/20 py-1 lg:py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-500/30 select-none cursor-pointer">매도</button>
+                            </div>
+                        </div>
+                    `;
+                    list.insertAdjacentHTML('beforeend', cardHtml);
+                } else {
+                    const priceEl = document.getElementById(`price-${company.id}`);
+                    priceEl.textContent = formatMoney(company.price);
+                    priceEl.className = `font-bold text-[10px] lg:text-sm ${getColorClass(diff)}`;
+
+                    const diffEl = document.getElementById(`diff-${company.id}`);
+                    diffEl.textContent = `${diff > 0 ? '▲' : (diff < 0 ? '▼' : '-')} ${diffPercent.toFixed(1)}%`;
+                    diffEl.className = `text-[8px] lg:text-xs font-medium ${getColorClass(diff)}`;
+
+                    const holdingContainer = document.getElementById(`holding-container-${company.id}`);
+                    const holdingQty = document.getElementById(`holding-qty-${company.id}`);
+                    const holdingRate = document.getElementById(`holding-rate-${company.id}`);
+                    
+                    if (holding > 0) {
+                        holdingContainer.classList.remove('hidden');
+                        holdingContainer.classList.add('flex');
+                        holdingQty.textContent = `${holding}주`;
+                        holdingRate.textContent = `${returnRate > 0 ? '+' : ''}${returnRate.toFixed(1)}%`;
+                        holdingRate.className = `text-[8px] lg:text-xs font-bold ${getColorClass(returnRate)}`;
+                    } else {
+                        holdingContainer.classList.remove('flex');
+                        holdingContainer.classList.add('hidden');
+                    }
+
+                    const sellBtn = document.getElementById(`sell-btn-${company.id}`);
+                    if (holding <= 0) {
+                        sellBtn.setAttribute('disabled', 'true');
+                    } else {
+                        sellBtn.removeAttribute('disabled');
+                    }
+                }
+            });
+        }
+
+        function renderNotifications() {
+            const container = document.getElementById('notifications-container');
+            container.innerHTML = state.notifications.map(noti => {
+                const colorClass = noti.type === 'error' ? 'bg-red-900/95 border-red-500 text-red-100' : 
+                                   noti.type === 'success' ? 'bg-green-900/95 border-green-500 text-green-100' : 
+                                   'bg-slate-800/95 border-slate-600 text-white';
+                const icon = noti.type === 'error' ? SVGS.alert : '';
+                return `
+                    <div class="p-2 rounded-lg shadow-xl border flex items-center gap-1.5 text-[10px] font-bold animate-[slideInUp_0.3s_ease-out_forwards] ${colorClass}">
+                        ${icon} ${noti.msg}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addNotification(msg, type = 'info') {
+            const id = Date.now() + Math.random();
+            state.notifications.push({ id, msg, type });
+            if (state.notifications.length > 3) state.notifications.shift();
+            renderNotifications();
+            setTimeout(() => {
+                state.notifications = state.notifications.filter(n => n.id !== id);
+                renderNotifications();
+            }, 3500);
+        }
+
+        // --- 상호작용 로직 ---
+        window.buy = (id, quantity) => {
+            if (state.status !== 'PLAYING') return;
+            const comp = state.companies.find(c => c.id === id);
+            if (!comp) return;
+            const cost = comp.price * quantity;
+            if (state.cash >= cost) {
+                state.cash -= cost;
+                const existing = state.portfolio[id] || { quantity: 0, averagePrice: 0 };
+                const totalCost = (existing.quantity * existing.averagePrice) + cost;
+                const newQuantity = existing.quantity + quantity;
+                state.portfolio[id] = { quantity: newQuantity, averagePrice: totalCost / newQuantity };
+                renderHeader();
+                renderCompanies();
+            }
+        };
+
+        window.sell = (id, quantity) => {
+            if (state.status !== 'PLAYING') return;
+            const comp = state.companies.find(c => c.id === id);
+            if (!comp) return;
+            const holding = state.portfolio[id]?.quantity || 0;
+            if (holding >= quantity) {
+                const revenue = comp.price * quantity;
+                state.cash += revenue;
+                state.portfolio[id].quantity -= quantity;
+                if (state.portfolio[id].quantity <= 0) {
+                    delete state.portfolio[id];
+                }
+                renderHeader();
+                renderCompanies();
+            }
+        };
+
+        window.startAction = (action, id, quantity, event) => {
+            if (state.status !== 'PLAYING') return;
+            if (event && event.type === 'touchstart') {
+                isTouching = true;
+            } else if (event && event.type === 'mousedown' && isTouching) {
+                return; 
+            }
+
+            window.stopAction(); 
+
+            if (action === 'buy') window.buy(id, quantity);
+            if (action === 'sell') window.sell(id, quantity);
+
+            holdTimeout = setTimeout(() => {
+                holdInterval = setInterval(() => {
+                    if (action === 'buy') {
+                        const comp = state.companies.find(c => c.id === id);
+                        if (!comp || state.cash < comp.price * quantity) {
+                            window.stopAction();
+                            return;
+                        }
+                        window.buy(id, quantity);
+                    }
+                    if (action === 'sell') {
+                        const holding = state.portfolio[id]?.quantity || 0;
+                        if (holding < quantity) {
+                            window.stopAction();
+                            return;
+                        }
+                        window.sell(id, quantity);
+                    }
+                }, 80); 
+            }, 300);
+        };
+
+        window.stopAction = (event) => {
+            if (event && event.type === 'touchend') {
+                setTimeout(() => { isTouching = false; }, 300);
+            }
+            if (holdTimeout) clearTimeout(holdTimeout);
+            if (holdInterval) clearInterval(holdInterval);
+        };
+
+        // --- 사채 수금 로직 ---
+        function processRepayment() {
+            let principalToPay = Math.min(state.loan, state.repaymentCycleAmount);
+            let totalDue = principalToPay + state.interest;
+
+            if (state.cash >= totalDue) {
+                // 현금으로 정상 상환
+                state.cash -= totalDue;
+                state.loan -= principalToPay;
+                state.interest = 0;
+                state.repaymentTimer = CYCLE_TIME;
+                addNotification(`사채 상환 완료! (-${formatMoney(totalDue)})`, 'success');
+                if (state.loan === 0) {
+                    addNotification('모든 사채를 청산했습니다! 자유!', 'success');
+                }
+            } else {
+                // 현금 부족! 전량 강제 매도 진행
+                addNotification(`현금 부족! 전량 강제 매도 청산 진행!`, 'error');
+                
+                Object.keys(state.portfolio).forEach(id => {
+                    const comp = state.companies.find(c => c.id === id);
+                    if (comp) {
+                        const qty = state.portfolio[id].quantity;
+                        state.cash += comp.price * qty;
+                    }
+                });
+                state.portfolio = {}; 
+                renderCompanies(); 
+
+                // 강제 매도 후 다시 검사
+                if (state.cash >= totalDue) {
+                    state.cash -= totalDue;
+                    state.loan -= principalToPay;
+                    state.interest = 0;
+                    state.repaymentTimer = CYCLE_TIME;
+                    addNotification(`주식 강제 매도로 상환했습니다. (-${formatMoney(totalDue)})`, 'error');
+                    if (state.loan === 0) {
+                        addNotification('모든 사채를 청산했습니다! 자유!', 'success');
+                    }
+                } else {
+                    // 가진걸 다 팔아도 못 갚음 -> 게임 오버
+                    state.status = 'LOSE';
+                    showOverlay('☠️ 사채업자에게 끌려갔습니다 (패배)', `수금액 ${formatMoney(totalDue)} 미네랄을 갚지 못해 우주선 노예로 팔려갔습니다...`, 'text-red-500');
+                }
+            }
+            renderHeader();
+        }
+
+        // --- 메인 루프 ---
+        function startLoops() {
+            if (timerInterval) clearInterval(timerInterval);
+            if (gameInterval) clearInterval(gameInterval);
+
+            // 1초 타이머 루프
+            timerInterval = setInterval(() => {
+                let next = state.timerDisplay === 'ONAIR!' ? 5 : (state.timerDisplay === 1 ? 'ONAIR!' : state.timerDisplay - 1);
+                
+                if (next === 'ONAIR!') {
+                    const randomNews = NEWS_POOL[Math.floor(Math.random() * NEWS_POOL.length)];
+                    let actualImpact = null;
+                    let isGood = false;
+                    let newsText = randomNews.text;
+                    let specialCompanyId = null;
+                    let specialImpact = null;
+                    let isDelist = false;
+                    
+                    if (randomNews.type === 'SECTOR' && Array.isArray(randomNews.impact)) {
+                        actualImpact = randomRange(randomNews.impact[0], randomNews.impact[1]);
+                        isGood = actualImpact > 0;
+
+                        // 💡 15% 확률로 돌발 기현상(역주행, 나홀로 상폐 등) 발생!
+                        if (Math.random() < 0.15 && state.companies.length > 0) {
+                            const sectorComps = state.companies.filter(c => c.sector === randomNews.sector);
+                            if (sectorComps.length > 0) {
+                                const targetComp = sectorComps[Math.floor(Math.random() * sectorComps.length)];
+                                specialCompanyId = targetComp.id;
+
+                                if (isGood) {
+                                    // 업종 전체는 호재인데, 한 놈만 망함
+                                    if (Math.random() < 0.3) {
+                                        // 상장폐지 급 치명타
+                                        isDelist = true;
+                                        newsText += `<br><span class="text-red-500 font-black animate-pulse">🚨 [충격] 호황 속 ${targetComp.name}, 대규모 비자금 발각! 즉시 상장폐지!</span>`;
+                                    } else {
+                                        // 대폭락
+                                        specialImpact = randomRange(-0.8, -0.4);
+                                        newsText += `<br><span class="text-blue-400 font-bold">📉 [단독] 하지만 ${targetComp.name}, 대표의 사설 도박 연루로 나홀로 폭락!</span>`;
+                                    }
+                                } else {
+                                    // 업종 전체는 악재인데, 한 놈만 떡상
+                                    specialImpact = randomRange(0.8, 1.5);
+                                    newsText += `<br><span class="text-red-400 font-bold animate-pulse">🚀 [특보] 불황 속 ${targetComp.name}, 반사이익 독점하며 나홀로 초대박!</span>`;
+                                }
+                            }
+                        }
+                    }
+                    
+                    state.news = { 
+                        ...randomNews, 
+                        actualImpact, 
+                        isGood, 
+                        text: newsText 
+                    };
+                    
+                    state.pendingEvents.impact = randomNews.type === 'SECTOR' ? { 
+                        sector: randomNews.sector, 
+                        impact: actualImpact,
+                        specialCompanyId: specialCompanyId,
+                        specialImpact: specialImpact,
+                        isDelist: isDelist
+                    } : null;
+                    state.pendingEvents.addNew = Math.random() < 0.2;
+                }
+                
+                state.timerDisplay = next;
+
+                // 사채 이자 및 타이머 갱신
+                if (state.loan > 0) {
+                    state.repaymentTimer -= 1;
+                    state.interest += 10000; // 초당 1만 미네랄 이자 발생
+                    if (state.repaymentTimer <= 0) {
+                        processRepayment();
+                    }
+                }
+
+                renderHeader();
+            }, 1000);
+
+            // 0.2초 시장 갱신 루프
+            gameInterval = setInterval(() => {
+                const impactToApply = state.pendingEvents.impact;
+                const shouldAddNew = state.pendingEvents.addNew;
+                state.pendingEvents = { impact: null, addNew: false };
+
+                state.companies = state.companies.map(comp => {
+                    let changeMultiplier = 1 + randomRange(-comp.volatility, comp.volatility);
+                    
+                    // 뉴스 임팩트 적용 로직
+                    if (impactToApply) {
+                        if (impactToApply.specialCompanyId === comp.id) {
+                            // 돌발 기현상에 당첨된 기업
+                            if (impactToApply.isDelist) {
+                                comp.price = 0; // 강제 상폐 마커
+                            } else if (impactToApply.specialImpact !== null) {
+                                changeMultiplier += impactToApply.specialImpact;
+                            }
+                        } else if (impactToApply.sector === comp.sector) {
+                            // 일반적인 업종 영향력
+                            changeMultiplier += impactToApply.impact;
+                        }
+                    }
+
+                    let newPrice = comp.price === 0 ? 0 : Math.floor(comp.price * changeMultiplier);
+                    if (newPrice > 0 && newPrice < 100) newPrice = 50; 
+                    
+                    const newHistory = [...comp.history.slice(1), newPrice];
+                    return { ...comp, prevPrice: comp.price, price: newPrice, history: newHistory };
+                });
+
+                // 상장폐지 (특수 이벤트 상폐 + 일반 주가 하락 파산)
+                const specialDelisted = state.companies.filter(c => c.price === 0);
+                const bankruptCompanies = state.companies.filter(c => c.price > 0 && c.price <= 50 && Math.random() < 0.06);
+                const allToDelist = [...specialDelisted, ...bankruptCompanies];
+
+                if (allToDelist.length > 0) {
+                    allToDelist.forEach(bc => {
+                        const reason = bc.price === 0 ? '폐지' : '파산';
+                        addNotification(`[${bc.name}] ${reason}!`, 'error');
+                        delete state.portfolio[bc.id];
+                    });
+                    state.companies = state.companies.filter(c => !allToDelist.includes(c));
+                }
+
+                // 신규 상장
+                if (shouldAddNew && state.companies.length < 15) { 
+                    const randomSector = SECTORS[Math.floor(Math.random() * SECTORS.length)];
+                    let newComp;
+                    let attempts = 0;
+                    do {
+                        newComp = generateCompany(randomSector, Math.floor(randomRange(5000, 30000)));
+                        attempts++;
+                    } while (state.companies.some(c => c.name === newComp.name) && attempts < 10);
+                    
+                    if (attempts < 10) { 
+                        state.companies.push(newComp);
+                        addNotification(`[${newComp.name}] 상장!`, 'success');
+                    }
+                }
+
+                // 업종 데이터 갱신
+                SECTORS.forEach(sector => {
+                    const sectorCompanies = state.companies.filter(c => c.sector === sector);
+                    let avgPrice = 0;
+                    if (sectorCompanies.length > 0) {
+                        avgPrice = sectorCompanies.reduce((sum, c) => sum + c.price, 0) / sectorCompanies.length;
+                    }
+                    const currentHistory = state.sectorData[sector] || Array(MAX_HISTORY).fill(avgPrice);
+                    state.sectorData[sector] = [...currentHistory.slice(1), avgPrice];
+                });
+
+                renderChart();
+                renderSectorStatus();
+                renderCompanies();
+                renderHeader(); 
+
+                checkWinLoss(); 
+            }, 200);
+        }
+
+        // --- 승패 로직 및 오버레이 ---
+        function checkWinLoss() {
+            let stockValue = 0;
+            Object.entries(state.portfolio).forEach(([id, data]) => {
+                const comp = state.companies.find(c => c.id === id);
+                if (comp) stockValue += comp.price * data.quantity;
+            });
+            const totalAsset = state.cash + stockValue;
+
+            if (state.loan === 0 && totalAsset >= GOAL_ASSET) {
+                state.status = 'WIN';
+                showOverlay('🎉 코프룰루 재벌 (승리)', `모든 사채를 갚고 총 자산 ${formatMoney(GOAL_ASSET)} 미네랄을 돌파했습니다!\n당신은 코프룰루 구역 최고의 투자가입니다.`, 'text-yellow-400');
+            } else if (state.loan === 0 && totalAsset < 1000) {
+                state.status = 'LOSE';
+                showOverlay('☠️ 완전 파산 (패배)', `빚은 다 갚았지만 총 자산이 1,000 미네랄 미만으로 떨어졌습니다...\n저글링 밥으로 전락했습니다.`, 'text-red-500');
+            }
+        }
+
+        function showOverlay(title, desc, titleClass) {
+            if (timerInterval) clearInterval(timerInterval);
+            if (gameInterval) clearInterval(gameInterval);
+            
+            const overlay = document.getElementById('game-overlay');
+            const titleEl = document.getElementById('overlay-title');
+            const descEl = document.getElementById('overlay-desc');
+            
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            titleEl.className = `text-2xl sm:text-3xl font-black mb-4 ${titleClass}`;
+            titleEl.innerText = title;
+            descEl.innerText = desc;
+        }
+
+        window.startGame = () => {
+            const overlay = document.getElementById('start-overlay');
+            overlay.classList.remove('flex');
+            overlay.classList.add('hidden');
+            state.status = 'PLAYING';
+            startLoops();
+        };
+
+        window.restartGame = () => {
+            const overlay = document.getElementById('game-overlay');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+            
+            // 처음 안내창 다시 띄우기 (완전 초기화)
+            const startOverlay = document.getElementById('start-overlay');
+            startOverlay.classList.remove('hidden');
+            startOverlay.classList.add('flex');
+            
+            state = {
+                cash: INITIAL_LOAN,
+                portfolio: {}, 
+                companies: [],
+                sectorData: {},
+                news: { text: "새로운 시뮬레이션이 시작되었습니다.", type: 'NOISE' },
+                notifications: [],
+                timerDisplay: 5,
+                pendingEvents: { impact: null, addNew: false },
+                status: 'START',
+                loan: INITIAL_LOAN,
+                interest: 0,
+                repaymentTimer: CYCLE_TIME,
+                repaymentCycleAmount: 250000
+            };
+            
+            document.getElementById('companies-container').innerHTML = '';
+            document.getElementById('sector-status-container').innerHTML = '';
+            document.getElementById('chart-container').innerHTML = '';
+            
+            init();
+        };
+
+        // 앱 시작
+        init();
+    </script>
+</body>
+</html>
+
+
+
+
