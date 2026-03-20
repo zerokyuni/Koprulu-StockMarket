@@ -300,14 +300,18 @@
             news: { text: "시뮬레이션이 시작되었습니다. 마켓 속보를 주목하세요.", type: 'NOISE' },
             notifications: [],
             timerDisplay: 5,
-            pendingEvents: { impact: null, addNew: false },
+            
+            // Pending Events handling (일반 및 특수 이벤트 지연 처리)
+            scheduledSpecialEvent: null,
+            pendingEvents: { impact: null, specialImpact: null, addNew: false },
+            
             status: 'START',
             
-            // 사채 시스템 (난이도 하향 적용됨)
+            // 사채 시스템
             loan: INITIAL_LOAN,
             interest: 0,
             repaymentTimer: CYCLE_TIME,
-            repaymentCycleAmount: 100000 // 한 턴당 갚을 원금 10만으로 감소
+            repaymentCycleAmount: 100000 
         };
 
         // 루프 관리를 위한 변수
@@ -585,7 +589,7 @@
                     if (!list) return;
 
                     const cardHtml = `
-                        <div id="card-${company.id}" data-id="${company.id}" class="company-card bg-slate-800 rounded lg:rounded-lg border border-slate-700 p-1 lg:p-2 flex flex-col shadow-sm transition-all duration-300 relative">
+                        <div id="card-${company.id}" data-id="${company.id}" class="company-card bg-slate-800 rounded lg:rounded-lg border border-slate-700 p-1 lg:p-2 flex flex-col shadow-sm transition-all duration-300">
                             <div class="font-bold text-white text-[9px] lg:text-sm truncate w-full" title="${company.name}">${company.name}</div>
                             <div class="mt-0.5 lg:mt-1 flex flex-col lg:flex-row lg:justify-between lg:items-end">
                                 <span id="price-${company.id}" class="font-bold text-[10px] lg:text-sm ${getColorClass(diff)}">${formatMoney(company.price)}</span>
@@ -593,17 +597,12 @@
                                     ${diff > 0 ? '▲' : (diff < 0 ? '▼' : '-')} ${diffPercent.toFixed(1)}%
                                 </span>
                             </div>
-                            
-                            <!-- 보유 수량 컨테이너 (고정 높이 확보 및 visibility 활용) -->
-                            <div class="h-5 lg:h-6 mt-1 lg:mt-2">
-                                <div id="holding-container-${company.id}" class="${holding > 0 ? 'visible' : 'invisible'} h-full bg-slate-900 rounded p-1 lg:p-1.5 flex justify-between items-center border border-slate-700">
-                                    <span id="holding-qty-${company.id}" class="text-[8px] lg:text-xs font-bold text-slate-200">${holding}주</span>
-                                    <span id="holding-rate-${company.id}" class="text-[8px] lg:text-xs font-bold ${getColorClass(returnRate)}">
-                                        ${returnRate > 0 ? '+' : ''}${returnRate.toFixed(1)}%
-                                    </span>
-                                </div>
+                            <div id="holding-container-${company.id}" class="${holding > 0 ? 'flex' : 'hidden'} mt-1 lg:mt-2 bg-slate-900 rounded p-1 lg:p-1.5 justify-between items-center border border-slate-700">
+                                <span id="holding-qty-${company.id}" class="text-[8px] lg:text-xs font-bold text-slate-200">${holding}주</span>
+                                <span id="holding-rate-${company.id}" class="text-[8px] lg:text-xs font-bold ${getColorClass(returnRate)}">
+                                    ${returnRate > 0 ? '+' : ''}${returnRate.toFixed(1)}%
+                                </span>
                             </div>
-                            
                             <div class="flex gap-0.5 lg:gap-2 mt-1 lg:mt-2">
                                 <button oncontextmenu="return false;" onmousedown="startAction('buy', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('buy', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchcancel="stopAction(event)" class="flex-1 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white active:bg-red-600 py-1 lg:py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-red-500/30 select-none cursor-pointer">매수</button>
                                 <button id="sell-btn-${company.id}" oncontextmenu="return false;" onmousedown="startAction('sell', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('sell', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchcancel="stopAction(event)" ${holding <= 0 ? 'disabled' : ''} class="flex-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white active:bg-blue-600 disabled:opacity-20 disabled:hover:bg-blue-500/20 py-1 lg:py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-500/30 select-none cursor-pointer">매도</button>
@@ -625,14 +624,14 @@
                     const holdingRate = document.getElementById(`holding-rate-${company.id}`);
                     
                     if (holding > 0) {
-                        holdingContainer.classList.remove('invisible');
-                        holdingContainer.classList.add('visible');
+                        holdingContainer.classList.remove('hidden');
+                        holdingContainer.classList.add('flex');
                         holdingQty.textContent = `${holding}주`;
                         holdingRate.textContent = `${returnRate > 0 ? '+' : ''}${returnRate.toFixed(1)}%`;
                         holdingRate.className = `text-[8px] lg:text-xs font-bold ${getColorClass(returnRate)}`;
                     } else {
-                        holdingContainer.classList.remove('visible');
-                        holdingContainer.classList.add('invisible');
+                        holdingContainer.classList.remove('flex');
+                        holdingContainer.classList.add('hidden');
                     }
 
                     const sellBtn = document.getElementById(`sell-btn-${company.id}`);
@@ -800,39 +799,60 @@
 
             // 1초 타이머 루프
             timerInterval = setInterval(() => {
+                // 1. 예약된 특수 이벤트(추가속보) 처리
+                if (state.scheduledSpecialEvent) {
+                    state.scheduledSpecialEvent.delay -= 1;
+                    if (state.scheduledSpecialEvent.delay <= 0) {
+                        const ev = state.scheduledSpecialEvent;
+                        state.news = {
+                            ...state.news,
+                            text: state.news.text + ev.newsText
+                        };
+                        state.pendingEvents.specialImpact = ev.impactData;
+                        state.scheduledSpecialEvent = null;
+                    }
+                }
+
                 let next = state.timerDisplay === 'ONAIR!' ? 5 : (state.timerDisplay === 1 ? 'ONAIR!' : state.timerDisplay - 1);
                 
+                // 2. 일반 ONAIR! 이벤트 생성
                 if (next === 'ONAIR!') {
                     const randomNews = NEWS_POOL[Math.floor(Math.random() * NEWS_POOL.length)];
                     let actualImpact = null;
                     let isGood = false;
                     let newsText = randomNews.text;
-                    let specialCompanyId = null;
-                    let specialImpact = null;
-                    let isDelist = false;
                     
                     if (randomNews.type === 'SECTOR' && Array.isArray(randomNews.impact)) {
                         actualImpact = randomRange(randomNews.impact[0], randomNews.impact[1]);
                         isGood = actualImpact > 0;
 
+                        // 💡 15% 확률로 돌발 기현상 큐에 등록 (2초 뒤 터짐)
                         if (Math.random() < 0.15 && state.companies.length > 0) {
                             const sectorComps = state.companies.filter(c => c.sector === randomNews.sector);
                             if (sectorComps.length > 0) {
                                 const targetComp = sectorComps[Math.floor(Math.random() * sectorComps.length)];
-                                specialCompanyId = targetComp.id;
+                                let specialImpactData = { companyId: targetComp.id, impact: null, isDelist: false };
+                                let addonText = "";
 
                                 if (isGood) {
                                     if (Math.random() < 0.3) {
-                                        isDelist = true;
-                                        newsText += `<br><span class="text-red-500 font-black animate-pulse">🚨 [충격] 호황 속 ${targetComp.name}, 대규모 비자금 발각! 즉시 상장폐지!</span>`;
+                                        specialImpactData.isDelist = true;
+                                        addonText = `<br><span class="text-red-500 font-black animate-pulse">🚨 [추가속보] 호황 속 ${targetComp.name}, 대규모 비자금 발각! 즉시 상장폐지!</span>`;
                                     } else {
-                                        specialImpact = randomRange(-0.8, -0.4);
-                                        newsText += `<br><span class="text-blue-400 font-bold">📉 [단독] 하지만 ${targetComp.name}, 대표의 사설 도박 연루로 나홀로 폭락!</span>`;
+                                        specialImpactData.impact = randomRange(-0.8, -0.4);
+                                        addonText = `<br><span class="text-blue-400 font-bold">📉 [추가속보] 하지만 ${targetComp.name}, 대표의 사설 도박 연루로 나홀로 폭락!</span>`;
                                     }
                                 } else {
-                                    specialImpact = randomRange(0.8, 1.5);
-                                    newsText += `<br><span class="text-red-400 font-bold animate-pulse">🚀 [특보] 불황 속 ${targetComp.name}, 반사이익 독점하며 나홀로 초대박!</span>`;
+                                    specialImpactData.impact = randomRange(0.8, 1.5);
+                                    addonText = `<br><span class="text-red-400 font-bold animate-pulse">🚀 [추가속보] 불황 속 ${targetComp.name}, 반사이익 독점하며 나홀로 초대박!</span>`;
                                 }
+
+                                // 2초 뒤 추가속보 발동 예약
+                                state.scheduledSpecialEvent = {
+                                    delay: 2,
+                                    newsText: addonText,
+                                    impactData: specialImpactData
+                                };
                             }
                         }
                     }
@@ -846,17 +866,14 @@
                     
                     state.pendingEvents.impact = randomNews.type === 'SECTOR' ? { 
                         sector: randomNews.sector, 
-                        impact: actualImpact,
-                        specialCompanyId: specialCompanyId,
-                        specialImpact: specialImpact,
-                        isDelist: isDelist
+                        impact: actualImpact
                     } : null;
                     state.pendingEvents.addNew = Math.random() < 0.2;
                 }
                 
                 state.timerDisplay = next;
 
-                // 사채 이자 및 타이머 갱신 (이자율 하향 1,500 적용 유지)
+                // 사채 이자 및 타이머 갱신
                 if (state.loan > 0) {
                     state.repaymentTimer -= 1;
                     state.interest += 1500; 
@@ -871,21 +888,25 @@
             // 0.2초 시장 갱신 루프
             gameInterval = setInterval(() => {
                 const impactToApply = state.pendingEvents.impact;
+                const specialImpactToApply = state.pendingEvents.specialImpact;
                 const shouldAddNew = state.pendingEvents.addNew;
-                state.pendingEvents = { impact: null, addNew: false };
+                
+                state.pendingEvents = { impact: null, specialImpact: null, addNew: false };
 
                 state.companies = state.companies.map(comp => {
                     let changeMultiplier = 1 + randomRange(-comp.volatility, comp.volatility);
                     
-                    if (impactToApply) {
-                        if (impactToApply.specialCompanyId === comp.id) {
-                            if (impactToApply.isDelist) {
-                                comp.price = 0; 
-                            } else if (impactToApply.specialImpact !== null) {
-                                changeMultiplier += impactToApply.specialImpact;
-                            }
-                        } else if (impactToApply.sector === comp.sector) {
-                            changeMultiplier += impactToApply.impact;
+                    // 1. 섹터 전체 영향력 즉시 적용
+                    if (impactToApply && impactToApply.sector === comp.sector) {
+                        changeMultiplier += impactToApply.impact;
+                    }
+                    
+                    // 2. 2초 뒤 터진 나홀로 특수 이벤트(추가속보) 적용
+                    if (specialImpactToApply && specialImpactToApply.companyId === comp.id) {
+                        if (specialImpactToApply.isDelist) {
+                            comp.price = 0; 
+                        } else if (specialImpactToApply.impact !== null) {
+                            changeMultiplier += specialImpactToApply.impact;
                         }
                     }
 
@@ -896,7 +917,7 @@
                     return { ...comp, prevPrice: comp.price, price: newPrice, history: newHistory };
                 });
 
-                // 상장폐지 (테마에 맞는 플레이버 텍스트 적용)
+                // 상장폐지 (테마 텍스트 뱅크 적용)
                 const specialDelisted = state.companies.filter(c => c.price === 0);
                 const bankruptCompanies = state.companies.filter(c => c.price > 0 && c.price <= 50 && Math.random() < 0.06);
                 const allToDelist = [...specialDelisted, ...bankruptCompanies];
@@ -910,7 +931,7 @@
                     state.companies = state.companies.filter(c => !allToDelist.includes(c));
                 }
 
-                // 신규 상장 (테마에 맞는 플레이버 텍스트 적용)
+                // 신규 상장 (테마 텍스트 뱅크 적용)
                 if (shouldAddNew && state.companies.length < 15) { 
                     const randomSector = SECTORS[Math.floor(Math.random() * SECTORS.length)];
                     let newComp;
@@ -993,7 +1014,6 @@
             overlay.classList.add('hidden');
             overlay.classList.remove('flex');
             
-            // 처음 안내창 다시 띄우기 (완전 초기화)
             const startOverlay = document.getElementById('start-overlay');
             startOverlay.classList.remove('hidden');
             startOverlay.classList.add('flex');
@@ -1006,12 +1026,13 @@
                 news: { text: "새로운 시뮬레이션이 시작되었습니다.", type: 'NOISE' },
                 notifications: [],
                 timerDisplay: 5,
-                pendingEvents: { impact: null, addNew: false },
+                scheduledSpecialEvent: null,
+                pendingEvents: { impact: null, specialImpact: null, addNew: false },
                 status: 'START',
                 loan: INITIAL_LOAN,
                 interest: 0,
                 repaymentTimer: CYCLE_TIME,
-                repaymentCycleAmount: 100000 // 난이도 하향 적용 유지
+                repaymentCycleAmount: 100000 
             };
             
             document.getElementById('companies-container').innerHTML = '';
