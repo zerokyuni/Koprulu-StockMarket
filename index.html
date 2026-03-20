@@ -96,7 +96,22 @@
             </div>
         </div>
 
-        <!-- 뉴스 & 타이머 티커 (최대 두 줄 허용) -->
+        <!-- 🏆 승리 목표 진행 바 -->
+        <div id="victory-bar" class="hidden relative h-8 lg:h-10 bg-blue-950/90 border-t border-blue-900 shadow-inner overflow-hidden">
+            <div id="victory-progress-fill" class="absolute top-0 left-0 h-full bg-blue-600/50 transition-all duration-500 ease-out" style="width: 0%;"></div>
+            <div class="relative z-10 w-full h-full flex justify-between items-center px-2 lg:px-4 py-1">
+                <div class="flex items-center gap-1.5 text-[10px] lg:text-sm text-blue-200 truncate shrink-0">
+                    <span class="font-black text-blue-400">🏆 승리까지:</span>
+                    <span id="victory-remain" class="font-bold text-white">0</span>
+                </div>
+                <div class="flex items-center gap-1 text-[9px] lg:text-sm text-blue-300/80 shrink-0 ml-2">
+                    <span class="hidden sm:inline">현재 자산: </span><span id="victory-current" class="text-white font-black">0</span>
+                    <span class="border-l border-blue-800/50 pl-1 ml-1">목표: <span class="text-blue-400 font-bold">3,000,000</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 뉴스 & 타이머 티커 -->
         <div class="flex items-stretch min-h-[3rem] lg:min-h-[3.5rem] bg-slate-900 border-t border-slate-700">
             <!-- 타이머 -->
             <div id="timer-display" class="flex items-center px-1.5 lg:px-4 bg-slate-800 border-r border-slate-700 z-10 font-black text-[10px] lg:text-sm w-20 lg:w-32 justify-center shrink-0">
@@ -195,6 +210,20 @@
             trendingDown: `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-0.5"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline><polyline points="16 17 22 17 22 11"></polyline></svg>`,
             alert: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`
         };
+
+        // --- 테마 텍스트 뱅크 ---
+        const LIST_REASONS = [
+            "부푼 꿈을 안고", "성공적인 투자 유치로", "업계의 주목을 받으며",
+            "당찬 포부와 함께", "혁신적인 기술을 앞세워", "막대한 자본력을 바탕으로",
+            "스타트업 신화창조!", "은하계의 기대를 모으며", "비밀 프로젝트를 공개하며"
+        ];
+
+        const DELIST_REASONS = [
+            "경영 악화로", "심각한 자금난을 겪고", "대표의 야반도주로",
+            "횡령 혐의가 적발되어", "경쟁에서 완전히 밀리며", "파산 선고를 받고",
+            "세금 체납으로 인해", "기술 도난 사태로", "무리한 사업 확장 탓에",
+            "노조와의 극심한 갈등으로", "치명적인 결함이 터져"
+        ];
 
         // --- 데이터 (스타크래프트 테마) ---
         const SECTORS = ['테란', '저그', '프로토스'];
@@ -370,11 +399,15 @@
             const totalAsset = state.cash + stockValue;
             document.getElementById('total-asset-display').innerText = `${formatMoney(totalAsset)}`;
 
-            // 사채 경고 바 및 진행률 렌더링
             const loanBar = document.getElementById('loan-bar');
+            const victoryBar = document.getElementById('victory-bar');
+
+            // 💸 사채가 남아있을 때 (경고 바)
             if (state.loan > 0) {
                 loanBar.classList.remove('hidden');
                 loanBar.classList.add('block');
+                victoryBar.classList.remove('block');
+                victoryBar.classList.add('hidden');
                 
                 const timerEl = document.getElementById('loan-timer');
                 const warningTextEl = document.getElementById('loan-warning-text');
@@ -386,7 +419,7 @@
                 const progressPercent = ((CYCLE_TIME - state.repaymentTimer) / CYCLE_TIME) * 100;
                 progressFill.style.width = `${progressPercent}%`;
 
-                // 10초 이하 남았을 때 강렬한 경고 애니메이션
+                // 10초 이하 강렬한 경고
                 if (state.repaymentTimer <= 10) {
                     timerEl.className = 'font-black text-white w-6 lg:w-10 text-center text-red-400';
                     warningTextEl.className = 'font-black text-red-500 animate-fast-blink drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]';
@@ -399,9 +432,24 @@
                 document.getElementById('loan-due').innerText = formatMoney(principalToPay + state.interest);
                 document.getElementById('loan-principal').innerText = formatMoney(state.loan);
                 document.getElementById('loan-interest').innerText = formatMoney(state.interest);
-            } else {
+            } 
+            // 🏆 사채를 다 갚았을 때 (승리 진행 바)
+            else {
                 loanBar.classList.remove('block');
                 loanBar.classList.add('hidden');
+                victoryBar.classList.remove('hidden');
+                victoryBar.classList.add('block');
+
+                const victoryProgressFill = document.getElementById('victory-progress-fill');
+                const victoryRemain = document.getElementById('victory-remain');
+                const victoryCurrent = document.getElementById('victory-current');
+
+                const progressPercent = Math.min((totalAsset / GOAL_ASSET) * 100, 100);
+                victoryProgressFill.style.width = `${progressPercent}%`;
+                
+                const remaining = Math.max(GOAL_ASSET - totalAsset, 0);
+                victoryRemain.innerText = `${formatMoney(remaining)} 미네랄 남음`;
+                victoryCurrent.innerText = formatMoney(totalAsset);
             }
 
             // ONAIR 타이머
@@ -595,9 +643,10 @@
         function renderNotifications() {
             const container = document.getElementById('notifications-container');
             container.innerHTML = state.notifications.map(noti => {
-                const colorClass = noti.type === 'error' ? 'bg-red-900/95 border-red-500 text-red-100' : 
-                                   noti.type === 'success' ? 'bg-green-900/95 border-green-500 text-green-100' : 
-                                   'bg-slate-800/95 border-slate-600 text-white';
+                let colorClass = 'bg-slate-800/95 border-slate-600 text-white';
+                if (noti.type === 'error') colorClass = 'bg-red-900/95 border-red-500 text-red-100';
+                if (noti.type === 'success') colorClass = 'bg-blue-900/95 border-blue-500 text-blue-100';
+                
                 const icon = noti.type === 'error' ? SVGS.alert : '';
                 return `
                     <div class="p-2 rounded-lg shadow-xl border flex items-center gap-1.5 text-[10px] font-bold animate-[slideInUp_0.3s_ease-out_forwards] ${colorClass}">
@@ -701,17 +750,15 @@
             let totalDue = principalToPay + state.interest;
 
             if (state.cash >= totalDue) {
-                // 현금으로 정상 상환
                 state.cash -= totalDue;
                 state.loan -= principalToPay;
                 state.interest = 0;
                 state.repaymentTimer = CYCLE_TIME;
                 addNotification(`사채 상환 완료! (-${formatMoney(totalDue)})`, 'success');
                 if (state.loan === 0) {
-                    addNotification('모든 사채를 청산했습니다! 자유!', 'success');
+                    addNotification('모든 사채를 청산했습니다! 승리를 향해 가십시오!', 'success');
                 }
             } else {
-                // 현금 부족! 전량 강제 매도 진행
                 addNotification(`현금 부족! 전량 강제 매도 청산 진행!`, 'error');
                 
                 Object.keys(state.portfolio).forEach(id => {
@@ -724,7 +771,6 @@
                 state.portfolio = {}; 
                 renderCompanies(); 
 
-                // 강제 매도 후 다시 검사
                 if (state.cash >= totalDue) {
                     state.cash -= totalDue;
                     state.loan -= principalToPay;
@@ -732,10 +778,9 @@
                     state.repaymentTimer = CYCLE_TIME;
                     addNotification(`주식 강제 매도로 상환했습니다. (-${formatMoney(totalDue)})`, 'error');
                     if (state.loan === 0) {
-                        addNotification('모든 사채를 청산했습니다! 자유!', 'success');
+                        addNotification('모든 사채를 청산했습니다! 승리를 향해 가십시오!', 'success');
                     }
                 } else {
-                    // 가진걸 다 팔아도 못 갚음 -> 게임 오버
                     state.status = 'LOSE';
                     showOverlay('☠️ 사채업자에게 끌려갔습니다 (패배)', `수금액 ${formatMoney(totalDue)} 미네랄을 갚지 못해 우주선 노예로 팔려갔습니다...`, 'text-red-500');
                 }
@@ -765,7 +810,6 @@
                         actualImpact = randomRange(randomNews.impact[0], randomNews.impact[1]);
                         isGood = actualImpact > 0;
 
-                        // 💡 15% 확률로 돌발 기현상(역주행, 나홀로 상폐 등) 발생!
                         if (Math.random() < 0.15 && state.companies.length > 0) {
                             const sectorComps = state.companies.filter(c => c.sector === randomNews.sector);
                             if (sectorComps.length > 0) {
@@ -773,18 +817,14 @@
                                 specialCompanyId = targetComp.id;
 
                                 if (isGood) {
-                                    // 업종 전체는 호재인데, 한 놈만 망함
                                     if (Math.random() < 0.3) {
-                                        // 상장폐지 급 치명타
                                         isDelist = true;
                                         newsText += `<br><span class="text-red-500 font-black animate-pulse">🚨 [충격] 호황 속 ${targetComp.name}, 대규모 비자금 발각! 즉시 상장폐지!</span>`;
                                     } else {
-                                        // 대폭락
                                         specialImpact = randomRange(-0.8, -0.4);
                                         newsText += `<br><span class="text-blue-400 font-bold">📉 [단독] 하지만 ${targetComp.name}, 대표의 사설 도박 연루로 나홀로 폭락!</span>`;
                                     }
                                 } else {
-                                    // 업종 전체는 악재인데, 한 놈만 떡상
                                     specialImpact = randomRange(0.8, 1.5);
                                     newsText += `<br><span class="text-red-400 font-bold animate-pulse">🚀 [특보] 불황 속 ${targetComp.name}, 반사이익 독점하며 나홀로 초대박!</span>`;
                                 }
@@ -814,7 +854,7 @@
                 // 사채 이자 및 타이머 갱신
                 if (state.loan > 0) {
                     state.repaymentTimer -= 1;
-                    state.interest += 10000; // 초당 1만 미네랄 이자 발생
+                    state.interest += 10000; 
                     if (state.repaymentTimer <= 0) {
                         processRepayment();
                     }
@@ -832,17 +872,14 @@
                 state.companies = state.companies.map(comp => {
                     let changeMultiplier = 1 + randomRange(-comp.volatility, comp.volatility);
                     
-                    // 뉴스 임팩트 적용 로직
                     if (impactToApply) {
                         if (impactToApply.specialCompanyId === comp.id) {
-                            // 돌발 기현상에 당첨된 기업
                             if (impactToApply.isDelist) {
-                                comp.price = 0; // 강제 상폐 마커
+                                comp.price = 0; 
                             } else if (impactToApply.specialImpact !== null) {
                                 changeMultiplier += impactToApply.specialImpact;
                             }
                         } else if (impactToApply.sector === comp.sector) {
-                            // 일반적인 업종 영향력
                             changeMultiplier += impactToApply.impact;
                         }
                     }
@@ -854,21 +891,21 @@
                     return { ...comp, prevPrice: comp.price, price: newPrice, history: newHistory };
                 });
 
-                // 상장폐지 (특수 이벤트 상폐 + 일반 주가 하락 파산)
+                // 상장폐지 (테마에 맞는 플레이버 텍스트 적용)
                 const specialDelisted = state.companies.filter(c => c.price === 0);
                 const bankruptCompanies = state.companies.filter(c => c.price > 0 && c.price <= 50 && Math.random() < 0.06);
                 const allToDelist = [...specialDelisted, ...bankruptCompanies];
 
                 if (allToDelist.length > 0) {
                     allToDelist.forEach(bc => {
-                        const reason = bc.price === 0 ? '폐지' : '파산';
-                        addNotification(`[${bc.name}] ${reason}!`, 'error');
+                        const reason = DELIST_REASONS[Math.floor(Math.random() * DELIST_REASONS.length)];
+                        addNotification(`[${bc.name}] ${reason} 상장폐지!`, 'error');
                         delete state.portfolio[bc.id];
                     });
                     state.companies = state.companies.filter(c => !allToDelist.includes(c));
                 }
 
-                // 신규 상장
+                // 신규 상장 (테마에 맞는 플레이버 텍스트 적용)
                 if (shouldAddNew && state.companies.length < 15) { 
                     const randomSector = SECTORS[Math.floor(Math.random() * SECTORS.length)];
                     let newComp;
@@ -880,7 +917,8 @@
                     
                     if (attempts < 10) { 
                         state.companies.push(newComp);
-                        addNotification(`[${newComp.name}] 상장!`, 'success');
+                        const reason = LIST_REASONS[Math.floor(Math.random() * LIST_REASONS.length)];
+                        addNotification(`[${newComp.name}] ${reason} 상장!`, 'success');
                     }
                 }
 
@@ -983,7 +1021,5 @@
     </script>
 </body>
 </html>
-
-
 
 
