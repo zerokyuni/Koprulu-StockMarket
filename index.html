@@ -77,10 +77,8 @@
 
         <!-- 🚨 사채 상환 경고 바 -->
         <div id="loan-bar" class="hidden relative h-8 lg:h-10 bg-red-950/90 border-t border-red-900 shadow-inner overflow-hidden">
-            <!-- 프로그레스 바 -->
             <div id="loan-progress-fill" class="absolute top-0 left-0 h-full bg-red-700/50 transition-all duration-1000 ease-linear" style="width: 0%;"></div>
             
-            <!-- 텍스트 컨텐츠 -->
             <div class="relative z-10 w-full h-full flex justify-between items-center px-2 lg:px-4 py-1">
                 <div class="flex items-center gap-1.5 text-[10px] lg:text-sm text-red-200 truncate shrink-0">
                     <span id="loan-warning-text" class="font-black text-red-500 animate-pulse">🚨 수금까지:</span>
@@ -215,14 +213,16 @@
         const LIST_REASONS = [
             "부푼 꿈을 안고", "성공적인 투자 유치로", "업계의 주목을 받으며",
             "당찬 포부와 함께", "혁신적인 기술을 앞세워", "막대한 자본력을 바탕으로",
-            "스타트업 신화창조!", "은하계의 기대를 모으며", "비밀 프로젝트를 공개하며"
+            "스타트업 신화창조!", "은하계의 기대를 모으며", "비밀 프로젝트를 공개하며",
+            "초대형 펀딩 달성으로", "새로운 광맥 발견 덕에", "우주 주주들의 성원 속"
         ];
 
         const DELIST_REASONS = [
             "경영 악화로", "심각한 자금난을 겪고", "대표의 야반도주로",
             "횡령 혐의가 적발되어", "경쟁에서 완전히 밀리며", "파산 선고를 받고",
             "세금 체납으로 인해", "기술 도난 사태로", "무리한 사업 확장 탓에",
-            "노조와의 극심한 갈등으로", "치명적인 결함이 터져"
+            "노조와의 극심한 갈등으로", "치명적인 결함이 터져", "비자금 조성 의혹으로",
+            "적자 누적을 버티지 못해"
         ];
 
         // --- 데이터 (스타크래프트 테마) ---
@@ -242,7 +242,33 @@
         };
 
         const NEWS_POOL = [
-            // 노이즈
+            // ----------------------------------------------------
+            // [거시 경제 (GLOBAL) - 전 종목 영향]
+            // ----------------------------------------------------
+            { type: 'GLOBAL', impact: [-0.4, -0.2], text: "우주 자원 고갈 위기 선언! 전 행성 미네랄 채취 비용 증가로 우주 증시 대폭락!" },
+            { type: 'GLOBAL', impact: [0.3, 0.6], text: "미지의 행성에서 젤나가 유물 대거 발견! 코프룰루 구역 전체에 막대한 자본 유입!" },
+            { type: 'GLOBAL', impact: [-0.5, -0.3], text: "아몬의 그림자 재관측... 은하계 전역에 공포 확산되며 주식 시장 패닉 셀링!" },
+            { type: 'GLOBAL', impact: [0.2, 0.5], text: "3종족 평화 협정 타결 임박! 우주 경제 대통합 기대감에 전 종목 랠리!" },
+            { type: 'GLOBAL', impact: [-0.6, -0.3], text: "코프룰루 전역에 초거대 이온 폭풍 발생! 모든 통신망 및 유통망 마비로 대폭락!" },
+            { type: 'GLOBAL', impact: [0.4, 0.8], text: "우주 연합 은행, 전 종목 대상 무제한 양적 완화 발표! 코프룰루 증시 돈방석에 앉다!" },
+            { type: 'GLOBAL', impact: [-0.5, -0.2], text: "UED 잔당의 기습적인 테러 소식에 3종족 전체 방산/경제 지표 곤두박질!" },
+            { type: 'GLOBAL', impact: [0.3, 0.7], text: "새로운 중립 행성에서 초고순도 베스핀 가스 간헐천 수천 개 발견! 우주 경제 대활황!" },
+
+            // ----------------------------------------------------
+            // [개별 특보 (COMPANY) - 특정 회사 한정 떡상/떡락]
+            // ----------------------------------------------------
+            { type: 'COMPANY', impact: [0.8, 1.5], text: "{COMPANY_NAME}, 은하계 판도를 바꿀 혁신적 신기술 발표! 주가 수직 상승!" },
+            { type: 'COMPANY', impact: [-0.8, -0.5], text: "{COMPANY_NAME} 대표, 켈모리안 사채업자에게 쫓겨 야반도주! 주가 대폭락!" },
+            { type: 'COMPANY', impact: [1.0, 2.0], text: "{COMPANY_NAME} 본사 지하에서 무한 미네랄 광맥 발견! 주주들 돈방석!" },
+            { type: 'COMPANY', impact: [-0.9, -0.6], text: "{COMPANY_NAME} 주력 상품에서 치명적 방사능 유출... 기업 존폐 위기!" },
+            { type: 'COMPANY', impact: [1.5, 3.0], text: "[단독] {COMPANY_NAME}, 전 우주를 뒤흔들 '무한 에너지 코어' 개발 성공! 주가 300% 폭등 예감!" },
+            { type: 'COMPANY', impact: [-1.0, -0.7], text: "[속보] {COMPANY_NAME}, 외부 감사 결과 장부 조작 및 횡령 발각! 주가 나락행 열차 탑승!" },
+            { type: 'COMPANY', impact: [0.9, 2.0], text: "{COMPANY_NAME}, 젤나가의 숨겨진 기술력 독점 확보 소식에 매수세 대거 몰려!" },
+            { type: 'COMPANY', impact: [-0.9, -0.6], text: "[단독] {COMPANY_NAME} 핵심 연구진, 경쟁사로 단체 이직! 회사 기술력 완전 증발 사태!" },
+
+            // ----------------------------------------------------
+            // [노이즈 (NOISE) - 시장 영향 없음, 재미용]
+            // ----------------------------------------------------
             { type: 'NOISE', text: "테란 자치령, '오늘 저녁 메뉴는 뽀글이' 중대 발표... 시민들 환호" },
             { type: 'NOISE', text: "어느 마린, 스팀팩 잘못 맞고 3박 4일째 마라톤 중... 기네스북 등재 조짐" },
             { type: 'NOISE', text: "프로브, 일하기 싫어 파일런 뒤에 숨었다가 넥서스 AI에게 발각" },
@@ -255,8 +281,20 @@
             { type: 'NOISE', text: "핵폭발 오인 신고 폭주... 알고보니 맹독충 터지는 소리로 밝혀져" },
             { type: 'NOISE', text: "의무관(메딕), '스팀팩 작작 맞아라' 마린들에게 병원 경고문 부착" },
             { type: 'NOISE', text: "관측선(옵저버), 사생활 침해 논란으로 전면 수리 센터 입고" },
-            
-            // 테란
+            { type: 'NOISE', text: "저글링, '너무 귀여워서 공격 못하겠다'는 테란 병사들 속출... 전술적 가치 재평가" },
+            { type: 'NOISE', text: "벌처 동호회, 주말 라이딩 중 스파이더 마인 밟고 단체 비상탈출... 전원 생존" },
+            { type: 'NOISE', text: "리버, '도저히 못 걸어가겠다'며 셔틀 기사에게 요금 2배 지불 약속" },
+            { type: 'NOISE', text: "다크 템플러, 감기 걸려 재채기하다 위치 발각돼... '마스크 필수' 지침 하달" },
+            { type: 'NOISE', text: "디파일러, 컨디션 난조로 다크 스웜 대신 미세먼지 방출해 대기오염 주범으로 찍혀" },
+            { type: 'NOISE', text: "테란 사령부, '너구리 라면엔 계란을 넣어야 하는가' 난상 토론으로 1시간 마비" },
+            { type: 'NOISE', text: "마린, '총기 손질 귀찮아' 락스물에 가우스 소총 담갔다가 영창 징계" },
+            { type: 'NOISE', text: "울트라리스크 산책시키던 저그 유저, 목줄 끊어져 인근 미네랄 지대 초토화" },
+            { type: 'NOISE', text: "프로브, 일당 대신 젤나가 유물 달라고 파업 시도했으나 1초 만에 진압돼" },
+            { type: 'NOISE', text: "히드라리스크, 가래 뱉기 대회 3년 연속 우승... 상금은 미네랄 50" },
+
+            // ----------------------------------------------------
+            // [테란 (TERRAN) 섹션]
+            // ----------------------------------------------------
             { type: 'SECTOR', sector: '테란', impact: [0.15, 0.35], text: "[단독] SCV토건, 미네랄 채취 속도 200% 증가하는 혁신 다이아 드릴 개발!" },
             { type: 'SECTOR', sector: '테란', impact: [0.20, 0.40], text: "[속보] 시즈정밀, 사거리 3배 늘어난 '슈퍼 울트라 시즈모드 엔진' 상용화 성공" },
             { type: 'SECTOR', sector: '테란', impact: [0.20, 0.45], text: "[속보] 배틀엔지니어, 야마토 포 발사 대기시간 0.5초로 단축하는 신기술 발표!" },
@@ -265,8 +303,18 @@
             { type: 'SECTOR', sector: '테란', impact: [-0.40, -0.20], text: "골리앗기계, 부품 결함으로 대공 미사일이 아군 배틀크루저 격추해 주가 폭락" },
             { type: 'SECTOR', sector: '테란', impact: [-0.45, -0.25], text: "고스트전자, 핵 미사일 좌표 오류로 아군 사령부 타격... 사상 최악의 참사" },
             { type: 'SECTOR', sector: '테란', impact: [-0.35, -0.15], text: "레이스항공, 종이비행기보다 못한 내구성 논란에 대규모 리콜 사태 발생" },
+            { type: 'SECTOR', sector: '테란', impact: [0.20, 0.40], text: "[단독] 메딕제약, 스팀팩 10회 연속 투여해도 멀쩡한 '슈퍼 간 회복제' 개발! 주가 상한가" },
+            { type: 'SECTOR', sector: '테란', impact: [0.15, 0.35], text: "[속보] 벌처모터스, 공중 유닛도 격추하는 '스마트 스파이더 마인' 특허 출원" },
+            { type: 'SECTOR', sector: '테란', impact: [0.15, 0.30], text: "[단독] 팩토리중공업, 머신샵 1초 컷 조립 키트 출시... 테란 메카닉 부흥기 도래" },
+            { type: 'SECTOR', sector: '테란', impact: [0.25, 0.45], text: "배럭스건설, 저그 크립 위에서도 건물 지을 수 있는 특수 코팅 기술 시연 성공" },
+            { type: 'SECTOR', sector: '테란', impact: [-0.40, -0.20], text: "배럭스건설, 공중 부양 이동 중 엔진 꺼져 민가 덮쳐... 대규모 배상 위기" },
+            { type: 'SECTOR', sector: '테란', impact: [-0.35, -0.15], text: "파이어뱃가스, 파이어뱃들의 연쇄 흡연으로 가스 저장소 연쇄 폭발... 재무제표 잿더미" },
+            { type: 'SECTOR', sector: '테란', impact: [-0.30, -0.15], text: "SCV토건 경영진, 벙커 지으랬더니 미네랄 빼돌려 개인 별장 지은 정황 포착... 압수수색 돌입" },
+            { type: 'SECTOR', sector: '테란', impact: [-0.45, -0.25], text: "레이스항공, '클로킹' 기능 켰는데 엔진 소리가 탱크 급으로 커지는 치명적 결함 발각" },
 
-            // 저그
+            // ----------------------------------------------------
+            // [저그 (ZERG) 섹션]
+            // ----------------------------------------------------
             { type: 'SECTOR', sector: '저그', impact: [0.20, 0.40], text: "[속보] 퀸메디, 브루들링 부작용 없는 '완벽한 기생충 다이어트약' 글로벌 히트!" },
             { type: 'SECTOR', sector: '저그', impact: [0.15, 0.35], text: "해처리세포, 라바 생성 속도 5배 폭증하는 초영양 크립 앰플 대량 생산" },
             { type: 'SECTOR', sector: '저그', impact: [0.25, 0.45], text: "[속보] 저글링생명, 발업을 넘어선 '비행 저글링' 유전자 조작 성공! 생태계 파괴" },
@@ -275,8 +323,18 @@
             { type: 'SECTOR', sector: '저그', impact: [-0.35, -0.15], text: "뮤탈바이오, 쓰리쿠션 공격 물질 유출 사고 발생... 연구소 및 인근 초토화" },
             { type: 'SECTOR', sector: '저그', impact: [-0.45, -0.20], text: "디파질병랩, 아군도 감염시키는 통제불능 플레이그 유출 사태로 본진 궤멸" },
             { type: 'SECTOR', sector: '저그', impact: [-0.35, -0.15], text: "크립바이오, 곰팡이 핀 불량 점막(크립) 유통으로 저그 연합으로부터 고소당해" },
+            { type: 'SECTOR', sector: '저그', impact: [0.25, 0.45], text: "[속보] 럴커엔지니어, 스파인 사거리 맵 끝까지 닿는 '지진파 기술' 성공! 테란 초비상" },
+            { type: 'SECTOR', sector: '저그', impact: [0.15, 0.35], text: "[단독] 스콜지항공, 배틀크루저 레이저 100% 회피하는 곡예 비행 AI 도입" },
+            { type: 'SECTOR', sector: '저그', impact: [0.15, 0.30], text: "[속보] 성큰메디컬, 적혈구 증식 촉진하는 촉수 마사지기 홈쇼핑 매진 행렬" },
+            { type: 'SECTOR', sector: '저그', impact: [0.20, 0.40], text: "디파질병랩, 아군 피해 0%인 '선택적 다크 스웜' 상용화 발표에 주가 급등" },
+            { type: 'SECTOR', sector: '저그', impact: [-0.35, -0.15], text: "오버로드유전, 속업 연구 예산 삭감 여파로 우주 택배 배송 3달 지연... 고객 이탈 가속" },
+            { type: 'SECTOR', sector: '저그', impact: [-0.40, -0.20], text: "히드라약품, 기관지염 부작용으로 히드라리스크 대공 공격 불가 판정... 주가 급락" },
+            { type: 'SECTOR', sector: '저그', impact: [-0.30, -0.15], text: "저글링생명, 아드레날린 과다 투여 부작용으로 저글링들이 미네랄을 뜯어먹는 기행 벌여" },
+            { type: 'SECTOR', sector: '저그', impact: [-0.45, -0.25], text: "해처리세포, 라바가 드론 대신 굼벵이로 변태하는 유전자 결함 발생... 생산 라인 올스톱" },
 
-            // 프로토스
+            // ----------------------------------------------------
+            // [프로토스 (PROTOSS) 섹션]
+            // ----------------------------------------------------
             { type: 'SECTOR', sector: '프로토스', impact: [0.20, 0.50], text: "[속보] 커세어웹, 웹스 터지는 속도로 데이터 전송하는 6G '웹망' 기술 시연 성공!" },
             { type: 'SECTOR', sector: '프로토스', impact: [0.15, 0.35], text: "아비터클라우드, 은폐 필드 기반의 완벽한 해킹 방어 클라우드 출시해 업계 발칵" },
             { type: 'SECTOR', sector: '프로토스', impact: [0.20, 0.45], text: "[속보] 프로브AI, 미네랄 덩어리 자체를 텔레포트 시키는 넥서스 연동 기술 공개!" },
@@ -284,7 +342,15 @@
             { type: 'SECTOR', sector: '프로토스', impact: [-0.45, -0.20], text: "드라군IT, 신규 AI 칩셋 결함으로 제자리걸음만 반복... 전량 리콜" },
             { type: 'SECTOR', sector: '프로토스', impact: [-0.40, -0.25], text: "파일런통신, 원인 모를 대규모 정전 사태로 전 프로토스 전력망 및 와이파이 마비" },
             { type: 'SECTOR', sector: '프로토스', impact: [-0.45, -0.20], text: "템플러네트웍, 과도한 사이오닉 에너지 사용으로 본사 공중분해... 임원진 행방불명" },
-            { type: 'SECTOR', sector: '프로토스', impact: [-0.35, -0.15], text: "캐리어컴, 인터셉터 출격 시 엔진 꺼지는 치명적 결함 발견... 우주 쓰레기 전락" }
+            { type: 'SECTOR', sector: '프로토스', impact: [-0.35, -0.15], text: "캐리어컴, 인터셉터 출격 시 엔진 꺼지는 치명적 결함 발견... 우주 쓰레기 전락" },
+            { type: 'SECTOR', sector: '프로토스', impact: [0.20, 0.40], text: "[속보] 질럿테크, 신형 '하이퍼 다리보호대' 출시로 마린보다 3배 빠른 질럿 양산" },
+            { type: 'SECTOR', sector: '프로토스', impact: [0.15, 0.35], text: "[단독] 포지보안, 파일런 전력 공급 없이도 작동하는 '태양광 포톤 캐논' 개발 성공" },
+            { type: 'SECTOR', sector: '프로토스', impact: [0.15, 0.35], text: "[속보] 옵저버데이터, 전 우주 해상도 8K 지원하는 광학 렌즈 도입... 정보력 독점" },
+            { type: 'SECTOR', sector: '프로토스', impact: [0.25, 0.45], text: "리버소프트, 스캐럽 이동 속도 500% 증가하는 패치 적용... 파괴력 재평가" },
+            { type: 'SECTOR', sector: '프로토스', impact: [-0.45, -0.25], text: "넥서스컴퓨팅, 아비터 리콜 좌표 계산 오류로 병력을 용암 지대로 전송... 주주들 분노" },
+            { type: 'SECTOR', sector: '프로토스', impact: [-0.40, -0.20], text: "게이트웨이모빌, 원격 업데이트 오류로 3일째 유닛 생산 불가... 경쟁사 반사이익" },
+            { type: 'SECTOR', sector: '프로토스', impact: [-0.45, -0.20], text: "템플러네트웍, 가짜 실적(할루시네이션) 공시로 금융감독원 조사 착수... 상장 폐지 위기" },
+            { type: 'SECTOR', sector: '프로토스', impact: [-0.35, -0.15], text: "커세어웹, 웹스 그물망이 썩어 문드러지는 불량 자재 사용 논란에 대표이사 사퇴" }
         ];
 
         // --- 상태 관리 ---
@@ -301,9 +367,9 @@
             notifications: [],
             timerDisplay: 5,
             
-            // Pending Events handling (일반 및 특수 이벤트 지연 처리)
+            // Pending Events handling
             scheduledSpecialEvent: null,
-            pendingEvents: { impact: null, specialImpact: null, addNew: false },
+            pendingEvents: { impact: null, specialImpact: null, globalImpact: null, addNew: false },
             
             status: 'START',
             
@@ -470,12 +536,17 @@
             const n = state.news;
             let newsHtml = '';
             
-            if (n.type === 'SECTOR') {
+            if (n.type === 'SECTOR' || n.type === 'GLOBAL' || n.type === 'COMPANY') {
                 const isGood = n.isGood; 
                 const impactClass = isGood ? 'text-red-500' : 'text-blue-500';
                 const textClass = isGood ? 'text-red-400' : 'text-blue-400';
+                
+                let tagText = n.sector ? `${n.sector}${isGood ? '호재' : '악재'}` : '';
+                if (n.type === 'GLOBAL') tagText = `거시경제 ${isGood ? '호재' : '악재'}`;
+                if (n.type === 'COMPANY') tagText = `개별특보 ${isGood ? '호재' : '악재'}`;
+
                 newsHtml = `<div class="text-[10px] lg:text-sm leading-tight lg:leading-normal font-medium whitespace-normal break-keep animate-[fadeIn_0.5s_ease-out] ${textClass}">
-                    <span class="mr-1 font-black ${impactClass}">[${n.sector}${isGood ? '호재' : '악재'}]</span>${n.text}
+                    <span class="mr-1 font-black ${impactClass}">[${tagText}]</span>${n.text}
                 </div>`;
             } else {
                 newsHtml = `<div class="text-[10px] lg:text-sm leading-tight lg:leading-normal font-medium whitespace-normal break-keep animate-[fadeIn_0.5s_ease-out] text-slate-300">${n.text}</div>`;
@@ -588,6 +659,7 @@
                     const list = document.getElementById(`sector-list-${company.sector}`);
                     if (!list) return;
 
+                    // 'invisible' 클래스를 사용하여 holding 컨테이너의 영역을 유지하면서 안보이게 함
                     const cardHtml = `
                         <div id="card-${company.id}" data-id="${company.id}" class="company-card bg-slate-800 rounded lg:rounded-lg border border-slate-700 p-1 lg:p-2 flex flex-col shadow-sm transition-all duration-300">
                             <div class="font-bold text-white text-[9px] lg:text-sm truncate w-full" title="${company.name}">${company.name}</div>
@@ -597,7 +669,7 @@
                                     ${diff > 0 ? '▲' : (diff < 0 ? '▼' : '-')} ${diffPercent.toFixed(1)}%
                                 </span>
                             </div>
-                            <div id="holding-container-${company.id}" class="${holding > 0 ? 'flex' : 'hidden'} mt-1 lg:mt-2 bg-slate-900 rounded p-1 lg:p-1.5 justify-between items-center border border-slate-700">
+                            <div id="holding-container-${company.id}" class="${holding > 0 ? 'visible' : 'invisible'} flex mt-1 lg:mt-2 bg-slate-900 rounded p-1 lg:p-1.5 justify-between items-center border border-slate-700">
                                 <span id="holding-qty-${company.id}" class="text-[8px] lg:text-xs font-bold text-slate-200">${holding}주</span>
                                 <span id="holding-rate-${company.id}" class="text-[8px] lg:text-xs font-bold ${getColorClass(returnRate)}">
                                     ${returnRate > 0 ? '+' : ''}${returnRate.toFixed(1)}%
@@ -624,14 +696,14 @@
                     const holdingRate = document.getElementById(`holding-rate-${company.id}`);
                     
                     if (holding > 0) {
-                        holdingContainer.classList.remove('hidden');
-                        holdingContainer.classList.add('flex');
+                        holdingContainer.classList.remove('invisible');
+                        holdingContainer.classList.add('visible');
                         holdingQty.textContent = `${holding}주`;
                         holdingRate.textContent = `${returnRate > 0 ? '+' : ''}${returnRate.toFixed(1)}%`;
                         holdingRate.className = `text-[8px] lg:text-xs font-bold ${getColorClass(returnRate)}`;
                     } else {
-                        holdingContainer.classList.remove('flex');
-                        holdingContainer.classList.add('hidden');
+                        holdingContainer.classList.remove('visible');
+                        holdingContainer.classList.add('invisible');
                     }
 
                     const sellBtn = document.getElementById(`sell-btn-${company.id}`);
@@ -817,12 +889,13 @@
                 
                 // 2. 일반 ONAIR! 이벤트 생성
                 if (next === 'ONAIR!') {
-                    const randomNews = NEWS_POOL[Math.floor(Math.random() * NEWS_POOL.length)];
+                    const randomNewsTemplate = NEWS_POOL[Math.floor(Math.random() * NEWS_POOL.length)];
+                    let randomNews = { ...randomNewsTemplate };
                     let actualImpact = null;
                     let isGood = false;
                     let newsText = randomNews.text;
                     
-                    if (randomNews.type === 'SECTOR' && Array.isArray(randomNews.impact)) {
+                    if (randomNews.type === 'SECTOR') {
                         actualImpact = randomRange(randomNews.impact[0], randomNews.impact[1]);
                         isGood = actualImpact > 0;
 
@@ -855,6 +928,26 @@
                                 };
                             }
                         }
+                        state.pendingEvents.impact = { sector: randomNews.sector, impact: actualImpact };
+
+                    } else if (randomNews.type === 'GLOBAL') {
+                        // 🌍 거시 경제 (전체 영향)
+                        actualImpact = randomRange(randomNews.impact[0], randomNews.impact[1]);
+                        isGood = actualImpact > 0;
+                        state.pendingEvents.globalImpact = actualImpact;
+
+                    } else if (randomNews.type === 'COMPANY') {
+                        // 🏢 특정 개별 기업 특보
+                        if (state.companies.length > 0) {
+                            const targetComp = state.companies[Math.floor(Math.random() * state.companies.length)];
+                            actualImpact = randomRange(randomNews.impact[0], randomNews.impact[1]);
+                            isGood = actualImpact > 0;
+                            newsText = newsText.replace('{COMPANY_NAME}', targetComp.name);
+                            state.pendingEvents.specialImpact = { companyId: targetComp.id, impact: actualImpact, isDelist: false };
+                        } else {
+                            randomNews.type = 'NOISE';
+                            newsText = "시장에 상장된 기업이 하나도 없어 고요합니다...";
+                        }
                     }
                     
                     state.news = { 
@@ -864,10 +957,6 @@
                         text: newsText 
                     };
                     
-                    state.pendingEvents.impact = randomNews.type === 'SECTOR' ? { 
-                        sector: randomNews.sector, 
-                        impact: actualImpact
-                    } : null;
                     state.pendingEvents.addNew = Math.random() < 0.2;
                 }
                 
@@ -887,21 +976,27 @@
 
             // 0.2초 시장 갱신 루프
             gameInterval = setInterval(() => {
+                const globalImpactToApply = state.pendingEvents.globalImpact;
                 const impactToApply = state.pendingEvents.impact;
                 const specialImpactToApply = state.pendingEvents.specialImpact;
                 const shouldAddNew = state.pendingEvents.addNew;
                 
-                state.pendingEvents = { impact: null, specialImpact: null, addNew: false };
+                state.pendingEvents = { impact: null, specialImpact: null, globalImpact: null, addNew: false };
 
                 state.companies = state.companies.map(comp => {
                     let changeMultiplier = 1 + randomRange(-comp.volatility, comp.volatility);
                     
-                    // 1. 섹터 전체 영향력 즉시 적용
+                    // 1. 글로벌 경제 전체 파동 적용
+                    if (globalImpactToApply !== null) {
+                        changeMultiplier += globalImpactToApply;
+                    }
+
+                    // 2. 섹터별 파동 적용
                     if (impactToApply && impactToApply.sector === comp.sector) {
                         changeMultiplier += impactToApply.impact;
                     }
                     
-                    // 2. 2초 뒤 터진 나홀로 특수 이벤트(추가속보) 적용
+                    // 3. 개별 기업 특보 및 돌발 기현상 
                     if (specialImpactToApply && specialImpactToApply.companyId === comp.id) {
                         if (specialImpactToApply.isDelist) {
                             comp.price = 0; 
@@ -1027,7 +1122,7 @@
                 notifications: [],
                 timerDisplay: 5,
                 scheduledSpecialEvent: null,
-                pendingEvents: { impact: null, specialImpact: null, addNew: false },
+                pendingEvents: { impact: null, specialImpact: null, globalImpact: null, addNew: false },
                 status: 'START',
                 loan: INITIAL_LOAN,
                 interest: 0,
