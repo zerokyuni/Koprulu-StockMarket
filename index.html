@@ -585,7 +585,7 @@
                     if (!list) return;
 
                     const cardHtml = `
-                        <div id="card-${company.id}" data-id="${company.id}" class="company-card bg-slate-800 rounded lg:rounded-lg border border-slate-700 p-1 lg:p-2 flex flex-col shadow-sm transition-all duration-300">
+                        <div id="card-${company.id}" data-id="${company.id}" class="company-card bg-slate-800 rounded lg:rounded-lg border border-slate-700 p-1 lg:p-2 flex flex-col shadow-sm transition-all duration-300 relative">
                             <div class="font-bold text-white text-[9px] lg:text-sm truncate w-full" title="${company.name}">${company.name}</div>
                             <div class="mt-0.5 lg:mt-1 flex flex-col lg:flex-row lg:justify-between lg:items-end">
                                 <span id="price-${company.id}" class="font-bold text-[10px] lg:text-sm ${getColorClass(diff)}">${formatMoney(company.price)}</span>
@@ -593,12 +593,17 @@
                                     ${diff > 0 ? '▲' : (diff < 0 ? '▼' : '-')} ${diffPercent.toFixed(1)}%
                                 </span>
                             </div>
-                            <div id="holding-container-${company.id}" class="${holding > 0 ? 'flex' : 'hidden'} mt-1 lg:mt-2 bg-slate-900 rounded p-1 lg:p-1.5 justify-between items-center border border-slate-700">
-                                <span id="holding-qty-${company.id}" class="text-[8px] lg:text-xs font-bold text-slate-200">${holding}주</span>
-                                <span id="holding-rate-${company.id}" class="text-[8px] lg:text-xs font-bold ${getColorClass(returnRate)}">
-                                    ${returnRate > 0 ? '+' : ''}${returnRate.toFixed(1)}%
-                                </span>
+                            
+                            <!-- 보유 수량 컨테이너 (고정 높이 확보 및 visibility 활용) -->
+                            <div class="h-5 lg:h-6 mt-1 lg:mt-2">
+                                <div id="holding-container-${company.id}" class="${holding > 0 ? 'visible' : 'invisible'} h-full bg-slate-900 rounded p-1 lg:p-1.5 flex justify-between items-center border border-slate-700">
+                                    <span id="holding-qty-${company.id}" class="text-[8px] lg:text-xs font-bold text-slate-200">${holding}주</span>
+                                    <span id="holding-rate-${company.id}" class="text-[8px] lg:text-xs font-bold ${getColorClass(returnRate)}">
+                                        ${returnRate > 0 ? '+' : ''}${returnRate.toFixed(1)}%
+                                    </span>
+                                </div>
                             </div>
+                            
                             <div class="flex gap-0.5 lg:gap-2 mt-1 lg:mt-2">
                                 <button oncontextmenu="return false;" onmousedown="startAction('buy', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('buy', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchcancel="stopAction(event)" class="flex-1 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white active:bg-red-600 py-1 lg:py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-red-500/30 select-none cursor-pointer">매수</button>
                                 <button id="sell-btn-${company.id}" oncontextmenu="return false;" onmousedown="startAction('sell', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('sell', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchcancel="stopAction(event)" ${holding <= 0 ? 'disabled' : ''} class="flex-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white active:bg-blue-600 disabled:opacity-20 disabled:hover:bg-blue-500/20 py-1 lg:py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-500/30 select-none cursor-pointer">매도</button>
@@ -620,14 +625,14 @@
                     const holdingRate = document.getElementById(`holding-rate-${company.id}`);
                     
                     if (holding > 0) {
-                        holdingContainer.classList.remove('hidden');
-                        holdingContainer.classList.add('flex');
+                        holdingContainer.classList.remove('invisible');
+                        holdingContainer.classList.add('visible');
                         holdingQty.textContent = `${holding}주`;
                         holdingRate.textContent = `${returnRate > 0 ? '+' : ''}${returnRate.toFixed(1)}%`;
                         holdingRate.className = `text-[8px] lg:text-xs font-bold ${getColorClass(returnRate)}`;
                     } else {
-                        holdingContainer.classList.remove('flex');
-                        holdingContainer.classList.add('hidden');
+                        holdingContainer.classList.remove('visible');
+                        holdingContainer.classList.add('invisible');
                     }
 
                     const sellBtn = document.getElementById(`sell-btn-${company.id}`);
