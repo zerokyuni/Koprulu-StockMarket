@@ -56,14 +56,14 @@
 <body class="h-[100dvh] w-screen bg-slate-900 text-slate-100 flex flex-col font-sans overflow-hidden relative">
     
     <!-- 🌟 블록딜 퀘스트 상단 고정 배너 -->
-    <div id="quest-banner" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[95%] max-w-lg bg-gradient-to-r from-yellow-950/95 via-yellow-900/95 to-yellow-950/95 border-2 border-yellow-500 rounded-xl shadow-[0_10px_25px_rgba(234,179,8,0.3)] text-yellow-100 p-3 transform -translate-y-[200%] transition-transform duration-500 ease-out flex items-center justify-between pointer-events-none">
+    <div id="quest-banner" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[95%] max-w-lg bg-gradient-to-r from-yellow-950/50 via-yellow-900/50 to-yellow-950/50 backdrop-blur-md border-2 border-yellow-500/70 rounded-xl shadow-[0_10px_25px_rgba(234,179,8,0.2)] text-yellow-100 p-3 transform -translate-y-[200%] transition-transform duration-500 ease-out flex items-center justify-between pointer-events-none">
         <div class="flex flex-col">
             <span id="quest-banner-title" class="font-black text-yellow-400 text-[10px] lg:text-xs drop-shadow-md">🛡️ 자치령 조달청 특별 의뢰!</span>
-            <div class="font-bold text-sm lg:text-base mt-0.5">
+            <div class="font-bold text-sm lg:text-base mt-0.5 drop-shadow-md">
                 <span id="quest-banner-target" class="text-white">마린건설</span> <span id="quest-banner-qty" class="text-yellow-300">15주</span> 납품
             </div>
         </div>
-        <div class="flex flex-col items-end bg-yellow-950/50 rounded-lg px-3 py-1 border border-yellow-600/50 shadow-inner">
+        <div class="flex flex-col items-end bg-yellow-950/30 rounded-lg px-3 py-1 border border-yellow-600/40 shadow-inner">
             <span class="text-[9px] lg:text-[10px] text-yellow-200/80 font-bold mb-0.5">마감까지</span>
             <span class="font-black text-xl lg:text-2xl drop-shadow-[0_0_5px_rgba(250,204,21,0.8)] leading-none"><span id="quest-banner-timer" class="text-yellow-400">30</span>초</span>
         </div>
@@ -275,11 +275,11 @@
             '프로토스': '<img src="images/icon_protoss.png" class="inline-block w-4 h-4 align-text-bottom" alt="프로토스">'
         };
 
-        // ✨ 종목 이름 및 성격 라벨 적용 (이모지 대신 로고 이미지 결합)
+        // ✨ 종목 이름 및 성격 라벨 적용 (줄바꿈 추가)
         const SECTOR_LABELS = {
-            '테란': `${SECTOR_ICONS['테란']} 테란 (배당주)`,
-            '저그': `${SECTOR_ICONS['저그']} 저그 (테마주)`,
-            '프로토스': `${SECTOR_ICONS['프로토스']} 프로토스 (방어주)`
+            '테란': `${SECTOR_ICONS['테란']} 테란<br><span class="text-[8px] lg:text-[10px] opacity-75">(배당주)</span>`,
+            '저그': `${SECTOR_ICONS['저그']} 저그<br><span class="text-[8px] lg:text-[10px] opacity-75">(테마주)</span>`,
+            '프로토스': `${SECTOR_ICONS['프로토스']} 프로토스<br><span class="text-[8px] lg:text-[10px] opacity-75">(방어주)</span>`
         };
 
         const COMPANY_NAMES = {
@@ -467,7 +467,7 @@
         function initCompaniesDOM() {
             const html = SECTORS.map(sector => `
                 <div class="flex-1 flex flex-col bg-slate-900/50 rounded lg:rounded-xl border border-slate-700/50 overflow-hidden min-w-0 h-full">
-                    <div class="p-1 lg:p-2 text-center font-black text-[10px] lg:text-base border-b border-slate-700/50 bg-slate-800/80 shadow-sm shrink-0 truncate" style="color: ${SECTOR_COLORS[sector]}">
+                    <div class="p-1 lg:p-2 text-center font-black text-[10px] lg:text-base leading-tight border-b border-slate-700/50 bg-slate-800/80 shadow-sm shrink-0" style="color: ${SECTOR_COLORS[sector]}">
                         ${SECTOR_LABELS[sector]}
                     </div>
                     <div id="sector-list-${sector}" class="flex-1 overflow-y-auto custom-scrollbar p-1 lg:p-2 flex flex-col gap-1 lg:gap-2 pb-8">
@@ -481,10 +481,10 @@
         function initSectorStatusDOM() {
             const html = SECTORS.map(sector => `
                 <div class="snap-start shrink-0 w-[6rem] lg:w-full bg-slate-800 rounded-lg p-1.5 lg:p-3 border border-slate-700 flex flex-col lg:flex-row lg:justify-between items-center shadow-md transition-all" style="border-top-width: 3px; border-top-color: ${SECTOR_COLORS[sector]}">
-                    <span class="font-bold text-slate-300 text-[10px] lg:text-sm">${SECTOR_LABELS[sector]}</span>
-                    <div class="lg:text-right">
-                        <div id="sector-price-${sector}" class="text-[11px] lg:text-base font-black text-white mt-0.5 lg:mt-0">0</div>
-                        <div id="sector-diff-${sector}" class="flex items-center lg:justify-end text-[9px] lg:text-xs font-bold mt-0.5 lg:mt-0"></div>
+                    <span class="font-bold text-slate-300 text-[10px] lg:text-sm text-center lg:text-left leading-tight">${SECTOR_LABELS[sector]}</span>
+                    <div class="lg:text-right mt-0.5 lg:mt-0">
+                        <div id="sector-price-${sector}" class="text-[11px] lg:text-base font-black text-white">0</div>
+                        <div id="sector-diff-${sector}" class="flex items-center justify-center lg:justify-end text-[9px] lg:text-xs font-bold mt-0.5"></div>
                     </div>
                 </div>
             `).join('');
@@ -614,9 +614,9 @@
         function renderLegend() {
             const container = document.getElementById('legend-container');
             container.innerHTML = SECTORS.map(sector => `
-                <div class="flex items-center gap-1 text-[9px] lg:text-xs font-bold text-slate-200">
-                    <div class="w-2 h-2 lg:w-3 lg:h-3 rounded-full shadow-[0_0_5px_rgba(255,255,255,0.5)]" style="background-color: ${SECTOR_COLORS[sector]}"></div>
-                    ${SECTOR_LABELS[sector]}
+                <div class="flex items-center gap-1 text-[9px] lg:text-xs font-bold text-slate-200 leading-tight">
+                    <div class="w-2 h-2 lg:w-3 lg:h-3 rounded-full shadow-[0_0_5px_rgba(255,255,255,0.5)] shrink-0" style="background-color: ${SECTOR_COLORS[sector]}"></div>
+                    <div class="text-center lg:text-left">${SECTOR_LABELS[sector]}</div>
                 </div>
             `).join('');
         }
