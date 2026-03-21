@@ -55,7 +55,7 @@
 </head>
 <body class="h-[100dvh] w-screen bg-slate-900 text-slate-100 flex flex-col font-sans overflow-hidden relative">
     
-    <!-- 🌟 블록딜 퀘스트 상단 고정 배너 (블러 제거, 투명도 증가, 아우라 효과 추가) -->
+    <!-- 🌟 블록딜 퀘스트 상단 고정 배너 -->
     <div id="quest-banner" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[95%] max-w-lg bg-gradient-to-r from-yellow-950/70 via-yellow-900/70 to-yellow-950/70 border border-yellow-400/80 rounded-xl shadow-[0_0_30px_rgba(250,204,21,0.5)] text-yellow-100 p-3 transform -translate-y-[200%] transition-transform duration-500 ease-out flex items-center justify-between pointer-events-none">
         <div class="flex flex-col">
             <span id="quest-banner-title" class="font-black text-yellow-400 text-[10px] lg:text-xs drop-shadow-md">🛡️ 자치령 조달청 특별 의뢰!</span>
@@ -170,10 +170,8 @@
 
     <!-- 게임 시작 오버레이 -->
     <div id="start-overlay" class="fixed inset-0 z-[110] flex flex-col items-center justify-center p-6 text-center bg-slate-900" style="background-image: url('images/bg_start.jpg'); background-size: cover; background-position: center;">
-        <!-- 가독성을 위한 어두운 반투명 필터 -->
         <div class="absolute inset-0 bg-slate-900/75 backdrop-blur-[2px]"></div>
         
-        <!-- 콘텐츠 영역 -->
         <div class="relative z-10 flex flex-col items-center justify-center w-full">
             <h1 id="start-overlay-title" class="text-3xl sm:text-4xl font-black mb-4 text-blue-400 drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]">1회차: 자치령 뒷골목 큰손</h1>
             
@@ -621,23 +619,28 @@
             `).join('');
         }
 
+        // ✨ [수정됨] 차트를 상대값 정규화에서 절대값 기준으로 변경
         function renderChart() {
             const width = 300;
             const height = 100;
             const data = state.sectorData;
             
-            let globalMin = 100;
-            let globalMax = 100;
-            const normalizedData = {};
+            let globalMin = Infinity;
+            let globalMax = -Infinity;
+            const rawData = {};
 
             SECTORS.forEach(sector => {
                 const history = data[sector] || [];
-                const base = history[0] || 1;
-                const norm = history.map(val => (val / base) * 100);
-                normalizedData[sector] = norm;
-                globalMin = Math.min(globalMin, ...norm);
-                globalMax = Math.max(globalMax, ...norm);
+                rawData[sector] = history;
+                if (history.length > 0) {
+                    globalMin = Math.min(globalMin, ...history);
+                    globalMax = Math.max(globalMax, ...history);
+                }
             });
+
+            if (globalMin === Infinity) {
+               globalMin = 0; globalMax = 100;
+            }
 
             const range = (globalMax - globalMin) || 1;
             const padding = range * 0.1;
@@ -645,12 +648,10 @@
             const yMax = globalMax + padding;
             const yRange = yMax - yMin;
 
-            const y100 = height - ((100 - yMin) / yRange) * height;
-
             let polylines = SECTORS.map(sector => {
-                const normHistory = normalizedData[sector];
-                if (!normHistory) return '';
-                const points = normHistory.map((val, i) => {
+                const history = rawData[sector];
+                if (!history || history.length === 0) return '';
+                const points = history.map((val, i) => {
                     const x = (i / (MAX_HISTORY - 1)) * width;
                     const y = height - ((val - yMin) / yRange) * height;
                     return `${x},${y}`;
@@ -661,7 +662,6 @@
 
             const svg = `
                 <svg viewBox="0 0 ${width} ${height}" class="w-full h-full preserve-3d overflow-visible">
-                    <line x1="0" y1="${y100}" x2="${width}" y2="${y100}" stroke="#475569" stroke-width="1" stroke-dasharray="2 2"></line>
                     ${polylines}
                 </svg>
             `;
@@ -923,19 +923,20 @@
             }
         };
 
-        // --- ✨ [Feature 4] 전량 매수 / 전량 매도 및 시장 충격 ---
+        // --- ✨ [수정됨] 전량 매수 / 전량 매도 및 시장 충격 ---
         window.buyAll = (id) => {
             if (state.status !== 'PLAYING') return;
             const comp = state.companies.find(c => c.id === id);
             if (!comp) return;
             const quantity = Math.floor(state.cash / comp.price);
             if (quantity > 0) {
-                const cost = quantity * comp.price;
                 window.buy(id, quantity);
                 
-                if (cost >= 50000) { 
-                    state.playerImpacts.push({ companyId: id, impact: randomRange(0.01, 0.02) });
-                    addNotification(`[대량매수] ${comp.name} 주가 상승 모멘텀 발생!`, 'success');
+                // 25주 이상일 경우에만 상승 모멘텀 발동
+                if (quantity >= 25) { 
+                    const impact = randomRange(0.01, 0.03);
+                    state.playerImpacts.push({ companyId: id, impact: impact });
+                    addNotification(`[대량매수] ${comp.name} 상승 모멘텀(+${(impact*100).toFixed(1)}%) 발생!`, 'success');
                 }
             }
         };
@@ -945,12 +946,13 @@
             const holding = state.portfolio[id]?.quantity || 0;
             const comp = state.companies.find(c => c.id === id);
             if (holding > 0 && comp) {
-                const revenue = holding * comp.price;
                 window.sell(id, holding);
                 
-                if (revenue >= 50000) {
-                    state.playerImpacts.push({ companyId: id, impact: -randomRange(0.01, 0.02) });
-                    addNotification(`[대량매도] ${comp.name} 시장 패닉 유발!`, 'error');
+                // 25주 이상일 경우에만 시장 패닉 발동
+                if (holding >= 25) {
+                    const impact = randomRange(0.01, 0.03);
+                    state.playerImpacts.push({ companyId: id, impact: -impact });
+                    addNotification(`[대량매도] ${comp.name} 시장 패닉(-${(impact*100).toFixed(1)}%) 유발!`, 'error');
                 }
             }
         };
