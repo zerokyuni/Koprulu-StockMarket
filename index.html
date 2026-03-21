@@ -56,7 +56,7 @@
 <body class="h-[100dvh] w-screen bg-slate-900 text-slate-100 flex flex-col font-sans overflow-hidden relative">
     
     <!-- 🌟 블록딜 퀘스트 상단 고정 배너 (블러 제거, 투명도 증가, 아우라 효과 추가) -->
-    <div id="quest-banner" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[95%] max-w-lg bg-gradient-to-r from-yellow-950/40 via-yellow-900/40 to-yellow-950/40 border border-yellow-400/80 rounded-xl shadow-[0_0_30px_rgba(250,204,21,0.5)] text-yellow-100 p-3 transform -translate-y-[200%] transition-transform duration-500 ease-out flex items-center justify-between pointer-events-none">
+    <div id="quest-banner" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[95%] max-w-lg bg-gradient-to-r from-yellow-950/50 via-yellow-900/50 to-yellow-950/50 border border-yellow-400/80 rounded-xl shadow-[0_0_30px_rgba(250,204,21,0.5)] text-yellow-100 p-3 transform -translate-y-[200%] transition-transform duration-500 ease-out flex items-center justify-between pointer-events-none">
         <div class="flex flex-col">
             <span id="quest-banner-title" class="font-black text-yellow-400 text-[10px] lg:text-xs drop-shadow-md">🛡️ 자치령 조달청 특별 의뢰!</span>
             <div class="font-bold text-sm lg:text-base mt-0.5 drop-shadow-md">
@@ -65,7 +65,7 @@
         </div>
         <div class="flex flex-col items-end bg-yellow-950/20 rounded-lg px-3 py-1 border border-yellow-600/40 shadow-inner">
             <span class="text-[9px] lg:text-[10px] text-yellow-200/80 font-bold mb-0.5">마감까지</span>
-            <span class="font-black text-xl lg:text-2xl drop-shadow-[0_0_5px_rgba(250,204,21,0.8)] leading-none"><span id="quest-banner-timer" class="text-yellow-400">30</span>초</span>
+            <span class="font-black text-xl lg:text-2xl drop-shadow-[0_0_5px_rgba(250,204,21,0.8)] leading-none"><span id="quest-banner-timer" class="text-yellow-400">10</span>초</span>
         </div>
     </div>
 
@@ -682,7 +682,7 @@
 
                 const diffEl = document.getElementById(`sector-diff-${sector}`);
                 if (diffEl) {
-                    diffEl.className = `flex items-center lg:justify-end text-[9px] lg:text-xs font-bold ${getColorClass(diff)} mt-0.5 lg:mt-0`;
+                    diffEl.className = `flex items-center justify-center lg:justify-end text-[9px] lg:text-xs font-bold ${getColorClass(diff)} mt-0.5`;
                     diffEl.innerHTML = `
                         ${isUp ? SVGS.trendingUp : SVGS.trendingDown}
                         ${diff > 0 ? '+' : ''}${diffPercent.toFixed(2)}%
@@ -1143,7 +1143,7 @@
                                 companyId: targetComp.id,
                                 targetQuantity: targetQuantity,
                                 premium: premium,
-                                timeLeft: 30
+                                timeLeft: 10 // 30초에서 10초로 단축
                             };
                             
                             let factionMsg = "";
@@ -1156,7 +1156,7 @@
                                 document.getElementById('quest-banner-target').innerText = targetComp.name;
                                 document.getElementById('quest-banner-qty').innerText = `${targetQuantity}주`;
                                 const timerEl = document.getElementById('quest-banner-timer');
-                                timerEl.innerText = '30';
+                                timerEl.innerText = '10'; // 30에서 10초로 단축
                                 timerEl.className = 'text-yellow-400'; 
                                 
                                 questBanner.classList.remove('-translate-y-[200%]');
