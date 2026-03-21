@@ -65,7 +65,7 @@
         </div>
         <div class="flex flex-col items-end bg-yellow-950/20 rounded-lg px-3 py-1 border border-yellow-600/40 shadow-inner">
             <span class="text-[9px] lg:text-[10px] text-yellow-200/80 font-bold mb-0.5">마감까지</span>
-            <span class="font-black text-xl lg:text-2xl drop-shadow-[0_0_5px_rgba(250,204,21,0.8)] leading-none"><span id="quest-banner-timer" class="text-yellow-400">10</span>초</span>
+            <span class="font-black text-xl lg:text-2xl drop-shadow-[0_0_5px_rgba(250,204,21,0.8)] leading-none"><span id="quest-banner-timer" class="text-yellow-400">15</span>초</span>
         </div>
     </div>
 
@@ -1143,7 +1143,7 @@
                                 companyId: targetComp.id,
                                 targetQuantity: targetQuantity,
                                 premium: premium,
-                                timeLeft: 15 // 30초에서 15초로 단축
+                                timeLeft: 15 // 15초로 변경
                             };
                             
                             let factionMsg = "";
@@ -1156,7 +1156,7 @@
                                 document.getElementById('quest-banner-target').innerText = targetComp.name;
                                 document.getElementById('quest-banner-qty').innerText = `${targetQuantity}주`;
                                 const timerEl = document.getElementById('quest-banner-timer');
-                                timerEl.innerText = '15'; // 30에서 15초로 단축
+                                timerEl.innerText = '15'; // 15초로 변경
                                 timerEl.className = 'text-yellow-400'; 
                                 
                                 questBanner.classList.remove('-translate-y-[200%]');
