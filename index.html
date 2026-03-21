@@ -1143,7 +1143,7 @@
                                 companyId: targetComp.id,
                                 targetQuantity: targetQuantity,
                                 premium: premium,
-                                timeLeft: 10 // 30초에서 10초로 단축
+                                timeLeft: 15 // 30초에서 15초로 단축
                             };
                             
                             let factionMsg = "";
@@ -1156,7 +1156,7 @@
                                 document.getElementById('quest-banner-target').innerText = targetComp.name;
                                 document.getElementById('quest-banner-qty').innerText = `${targetQuantity}주`;
                                 const timerEl = document.getElementById('quest-banner-timer');
-                                timerEl.innerText = '10'; // 30에서 10초로 단축
+                                timerEl.innerText = '15'; // 30에서 15초로 단축
                                 timerEl.className = 'text-yellow-400'; 
                                 
                                 questBanner.classList.remove('-translate-y-[200%]');
