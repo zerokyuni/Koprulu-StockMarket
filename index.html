@@ -653,6 +653,10 @@
                 const avgPrice = state.portfolio[company.id]?.averagePrice || 0;
                 const returnRate = holding > 0 ? ((company.price - avgPrice) / avgPrice) * 100 : 0;
 
+                // 매수/매도 가능 여부 판단
+                const canBuy = state.cash >= company.price;
+                const canSell = holding > 0;
+
                 let card = document.getElementById(`card-${company.id}`);
 
                 if (!card) {
@@ -675,9 +679,11 @@
                                     ${returnRate > 0 ? '+' : ''}${returnRate.toFixed(1)}%
                                 </span>
                             </div>
-                            <div class="flex gap-0.5 lg:gap-2 mt-1 lg:mt-2">
-                                <button oncontextmenu="return false;" onmousedown="startAction('buy', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('buy', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchcancel="stopAction(event)" class="flex-1 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white active:bg-red-600 py-1 lg:py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-red-500/30 select-none cursor-pointer">매수</button>
-                                <button id="sell-btn-${company.id}" oncontextmenu="return false;" onmousedown="startAction('sell', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('sell', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchcancel="stopAction(event)" ${holding <= 0 ? 'disabled' : ''} class="flex-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white active:bg-blue-600 disabled:opacity-20 disabled:hover:bg-blue-500/20 py-1 lg:py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-500/30 select-none cursor-pointer">매도</button>
+                            <div class="grid grid-cols-2 gap-1 lg:gap-2 mt-1 lg:mt-2">
+                                <button id="buy-btn-${company.id}" oncontextmenu="return false;" onmousedown="startAction('buy', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('buy', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchcancel="stopAction(event)" ${!canBuy ? 'disabled' : ''} class="bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white active:bg-red-600 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-red-500/30 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">매수</button>
+                                <button id="sell-btn-${company.id}" oncontextmenu="return false;" onmousedown="startAction('sell', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('sell', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchcancel="stopAction(event)" ${!canSell ? 'disabled' : ''} class="bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white active:bg-blue-600 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-500/30 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">매도</button>
+                                <button id="buy-all-btn-${company.id}" onclick="buyAll('${company.id}')" ${!canBuy ? 'disabled' : ''} class="bg-red-900/40 text-red-300 hover:bg-red-600 hover:text-white active:bg-red-700 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-red-700/50 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">전량매수</button>
+                                <button id="sell-all-btn-${company.id}" onclick="sellAll('${company.id}')" ${!canSell ? 'disabled' : ''} class="bg-blue-900/40 text-blue-300 hover:bg-blue-600 hover:text-white active:bg-blue-700 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-700/50 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">전량매도</button>
                             </div>
                         </div>
                     `;
@@ -706,11 +712,29 @@
                         holdingContainer.classList.add('invisible');
                     }
 
+                    // 매수/매도 버튼 비활성화 상태 동적 업데이트
+                    const buyBtn = document.getElementById(`buy-btn-${company.id}`);
+                    const buyAllBtn = document.getElementById(`buy-all-btn-${company.id}`);
+                    if (buyBtn && buyAllBtn) {
+                        if (!canBuy) {
+                            buyBtn.setAttribute('disabled', 'true');
+                            buyAllBtn.setAttribute('disabled', 'true');
+                        } else {
+                            buyBtn.removeAttribute('disabled');
+                            buyAllBtn.removeAttribute('disabled');
+                        }
+                    }
+
                     const sellBtn = document.getElementById(`sell-btn-${company.id}`);
-                    if (holding <= 0) {
-                        sellBtn.setAttribute('disabled', 'true');
-                    } else {
-                        sellBtn.removeAttribute('disabled');
+                    const sellAllBtn = document.getElementById(`sell-all-btn-${company.id}`);
+                    if (sellBtn && sellAllBtn) {
+                        if (!canSell) {
+                            sellBtn.setAttribute('disabled', 'true');
+                            sellAllBtn.setAttribute('disabled', 'true');
+                        } else {
+                            sellBtn.removeAttribute('disabled');
+                            sellAllBtn.removeAttribute('disabled');
+                        }
                     }
                 }
             });
@@ -774,6 +798,25 @@
                 }
                 renderHeader();
                 renderCompanies();
+            }
+        };
+
+        // --- 전량 매수 / 전량 매도 ---
+        window.buyAll = (id) => {
+            if (state.status !== 'PLAYING') return;
+            const comp = state.companies.find(c => c.id === id);
+            if (!comp) return;
+            const quantity = Math.floor(state.cash / comp.price);
+            if (quantity > 0) {
+                window.buy(id, quantity);
+            }
+        };
+
+        window.sellAll = (id) => {
+            if (state.status !== 'PLAYING') return;
+            const holding = state.portfolio[id]?.quantity || 0;
+            if (holding > 0) {
+                window.sell(id, holding);
             }
         };
 
