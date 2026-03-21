@@ -266,14 +266,14 @@
             '프로토스': '#eab308'
         };
 
-        // ✨ 종족 이미지 로고 매핑 (images 폴더 내 파일 사용)
+        // ✨ 종족 이미지 로고 매핑
         const SECTOR_ICONS = {
             '테란': '<img src="images/icon_terran.png" class="inline-block w-4 h-4 align-text-bottom" alt="테란">',
             '저그': '<img src="images/icon_zerg.png" class="inline-block w-4 h-4 align-text-bottom" alt="저그">',
             '프로토스': '<img src="images/icon_protoss.png" class="inline-block w-4 h-4 align-text-bottom" alt="프로토스">'
         };
 
-        // ✨ 종목 이름 및 성격 라벨 적용 (줄바꿈 추가)
+        // ✨ 종목 이름 및 성격 라벨 적용
         const SECTOR_LABELS = {
             '테란': `${SECTOR_ICONS['테란']} 테란<br><span class="text-[8px] lg:text-[10px] opacity-75">(배당주)</span>`,
             '저그': `${SECTOR_ICONS['저그']} 저그<br><span class="text-[8px] lg:text-[10px] opacity-75">(테마주)</span>`,
@@ -388,7 +388,7 @@
 
         // --- 상태 관리 ---
         let state = {
-            level: 1, // ✨ 다회차 난이도 레벨 적용
+            level: 1, 
             cash: LEVEL_DATA[0].loan, 
             portfolio: {}, 
             companies: [],
@@ -426,9 +426,9 @@
         let holdInterval = null;
         let isTouching = false;
 
-        // --- 점진적 충격 주입 함수 (골든타임 부여) ---
+        // --- 점진적 충격 주입 함수 ---
         function setupGradualImpact(newsObj) {
-            const ticks = 15; // 0.2초 * 15 = 3초
+            const ticks = 15; 
             const impactPerTick = newsObj.actualImpact / ticks;
 
             if (newsObj.type === 'GLOBAL') {
@@ -440,16 +440,35 @@
             }
         }
 
+        // 🚨 [Feature 1 & 2] 꼼수 방지: 체결 단가, 수수료, 슬리피지 통합 계산 함수
+        function calculateExecution(type, basePrice, quantity) {
+            const taxRate = 0.005; // 0.5% 켈모리안 수수료
+            // 10주 초과 시 1주당 0.05% 슬리피지 누적 (최대 15% 한도)
+            const slippageRate = Math.min(Math.max(0, quantity - 10) * 0.0005, 0.15); 
+
+            let execPrice;
+            if (type === 'buy') {
+                execPrice = Math.floor(basePrice * (1 + slippageRate)); // 매수: 비싸게 삼
+                const baseCost = execPrice * quantity;
+                const tax = Math.max(1, Math.floor(baseCost * taxRate)); // 🚨 최소 1미네랄 무조건 징수
+                return { execPrice, totalAmount: baseCost + tax, slippageRate };
+            } else {
+                execPrice = Math.floor(basePrice * (1 - slippageRate)); // 매도: 싸게 팜
+                const baseRevenue = execPrice * quantity;
+                const tax = Math.max(1, Math.floor(baseRevenue * taxRate)); // 🚨 최소 1미네랄 무조건 징수
+                return { execPrice, totalAmount: baseRevenue - tax, slippageRate };
+            }
+        }
+
         const generateCompany = (sector, basePrice = null) => {
             const names = COMPANY_NAMES[sector];
             const name = names[Math.floor(Math.random() * names.length)];
             const price = basePrice || Math.floor(randomRange(1000, 50000));
             
-            // ✨ [종족 패시브] 기본 변동성 차등 부여
             let vol = 0;
-            if (sector === '테란') vol = randomRange(0.001, 0.004); // 가장 안정적
-            else if (sector === '저그') vol = randomRange(0.004, 0.016); // 가장 극단적
-            else if (sector === '프로토스') vol = randomRange(0.002, 0.008); // 중간
+            if (sector === '테란') vol = randomRange(0.001, 0.004); 
+            else if (sector === '저그') vol = randomRange(0.004, 0.016); 
+            else if (sector === '프로토스') vol = randomRange(0.002, 0.008); 
 
             return {
                 id: Math.random().toString(36).substr(2, 9),
@@ -619,7 +638,6 @@
             `).join('');
         }
 
-        // ✨ [수정됨] 차트를 상대값 정규화에서 절대값 기준으로 변경
         function renderChart() {
             const width = 300;
             const height = 100;
@@ -691,7 +709,6 @@
             });
         }
 
-        // ✨ [Feature 4] 언론 통제 (시세 조종) 로직
         window.manipulateMarket = (id) => {
             if (state.level < 4 || state.status !== 'PLAYING') return;
             const comp = state.companies.find(c => c.id === id);
@@ -709,7 +726,7 @@
                     type: 'COMPANY',
                     companyId: comp.id,
                     ticks: 5,
-                    impactPerTick: 1.5 / 5 // 1초 내에 150% 폭등
+                    impactPerTick: 1.5 / 5 
                 });
                 addNotification(`📰 [언론 통제] ${comp.name}에 대규모 호재 기사가 도배됩니다!`, 'success');
                 renderHeader();
@@ -731,7 +748,6 @@
                 const holding = state.portfolio[company.id]?.quantity || 0;
                 const avgPrice = state.portfolio[company.id]?.averagePrice || 0;
                 
-                // ✨ [Feature 2] 공매도 수익률 역산 로직
                 let returnRate = 0;
                 if (holding > 0) {
                     returnRate = ((company.price - avgPrice) / avgPrice) * 100;
@@ -739,8 +755,8 @@
                     returnRate = ((avgPrice - company.price) / avgPrice) * 100;
                 }
 
-                const canBuy = state.cash >= company.price;
-                // ✨ [Feature 2] 2회차 이상 공매도 해금 (0주 이하여도 매도 가능)
+                // 🚨 수수료(0.5%)가 포함된 실제 구매 여부 판단 (UI 비활성화용)
+                const canBuy = state.cash >= company.price * 1.005;
                 const canSell = state.level >= 2 ? true : holding > 0;
                 const canSellAll = holding > 0;
 
@@ -748,7 +764,6 @@
                 const questRingClass = isQuestTarget ? 'ring-2 ring-yellow-400 animate-pulse' : '';
                 const questText = isQuestTarget ? `<span class="text-yellow-400 text-[9px] ml-1 whitespace-nowrap">[의뢰: ${holding}/${state.activeQuest.targetQuantity}주]</span>` : '';
                 
-                // ✨ [Feature 4] 4회차 이상 클릭/터치 이벤트 할당
                 const titleClass = state.level >= 4 ? 'cursor-pointer hover:text-yellow-300 transition-colors' : '';
                 const titleAction = state.level >= 4 ? `onclick="manipulateMarket('${company.id}')"` : '';
 
@@ -871,73 +886,98 @@
         }
 
         // --- 상호작용 로직 ---
-        window.buy = (id, quantity) => {
-            if (state.status !== 'PLAYING') return;
+        window.buy = (id, quantity, isSilent = false) => {
+            if (state.status !== 'PLAYING') return false;
             const comp = state.companies.find(c => c.id === id);
-            if (!comp) return;
-            const cost = comp.price * quantity;
-            if (state.cash >= cost) {
-                state.cash -= cost;
-                const existing = state.portfolio[id] || { quantity: 0, averagePrice: comp.price };
+            if (!comp) return false;
+
+            const { execPrice, totalAmount, slippageRate } = calculateExecution('buy', comp.price, quantity);
+
+            if (state.cash >= totalAmount) {
+                state.cash -= totalAmount;
+                const existing = state.portfolio[id] || { quantity: 0, averagePrice: 0 };
                 
-                // ✨ [Feature 2] 공매도 평단가 계산 로직 보완
                 let newAvgPrice = existing.averagePrice;
                 if (existing.quantity >= 0) {
-                    newAvgPrice = ((existing.quantity * existing.averagePrice) + cost) / (existing.quantity + quantity);
+                    newAvgPrice = ((existing.quantity * existing.averagePrice) + totalAmount) / (existing.quantity + quantity);
                 } else if (existing.quantity + quantity > 0) {
-                    newAvgPrice = comp.price; // 숏 포지션 청산 후 롱 전환
+                    newAvgPrice = totalAmount / quantity; 
                 }
                 
                 state.portfolio[id] = { quantity: existing.quantity + quantity, averagePrice: newAvgPrice };
                 if (state.portfolio[id].quantity === 0) delete state.portfolio[id];
                 
+                if (!isSilent && slippageRate > 0) {
+                    addNotification(`[대량매수] 수급 부족으로 평단가가 ${(slippageRate*100).toFixed(1)}% 비싸게 체결되었습니다.`, 'error');
+                }
+
                 renderHeader();
                 renderCompanies();
+                return true;
             }
+            return false;
         };
 
-        window.sell = (id, quantity) => {
-            if (state.status !== 'PLAYING') return;
+        window.sell = (id, quantity, isSilent = false) => {
+            if (state.status !== 'PLAYING') return false;
             const comp = state.companies.find(c => c.id === id);
-            if (!comp) return;
+            if (!comp) return false;
             const holding = state.portfolio[id]?.quantity || 0;
             
-            // ✨ [Feature 2] 2회차 이상 공매도 무한 허용
             if (state.level >= 2 || holding >= quantity) {
-                const revenue = comp.price * quantity;
-                state.cash += revenue;
-                const existing = state.portfolio[id] || { quantity: 0, averagePrice: comp.price };
+                const { execPrice, totalAmount, slippageRate } = calculateExecution('sell', comp.price, quantity);
+                state.cash += totalAmount;
+                const existing = state.portfolio[id] || { quantity: 0, averagePrice: 0 };
                 
                 let newAvgPrice = existing.averagePrice;
                 if (existing.quantity <= 0) {
-                    newAvgPrice = ((Math.abs(existing.quantity) * existing.averagePrice) + revenue) / (Math.abs(existing.quantity) + quantity);
+                    newAvgPrice = ((Math.abs(existing.quantity) * existing.averagePrice) + totalAmount) / (Math.abs(existing.quantity) + quantity);
                 } else if (existing.quantity - quantity < 0) {
-                    newAvgPrice = comp.price; // 롱 포지션 청산 후 숏 전환
+                    newAvgPrice = totalAmount / quantity; 
                 }
 
                 state.portfolio[id] = { quantity: existing.quantity - quantity, averagePrice: newAvgPrice };
                 if (state.portfolio[id].quantity === 0) delete state.portfolio[id];
                 
+                if (!isSilent && slippageRate > 0) {
+                    addNotification(`[대량매도] 호가창 물량 부족으로 ${(slippageRate*100).toFixed(1)}% 싸게 체결되었습니다.`, 'error');
+                }
+
                 renderHeader();
                 renderCompanies();
+                return true;
             }
+            return false;
         };
 
-        // --- ✨ [수정됨] 전량 매수 / 전량 매도 및 시장 충격 ---
+        // 🚨 꼼수 방지 (정확한 수수료/슬리피지 한도 역산 로직)
         window.buyAll = (id) => {
             if (state.status !== 'PLAYING') return;
             const comp = state.companies.find(c => c.id === id);
             if (!comp) return;
-            const quantity = Math.floor(state.cash / comp.price);
-            if (quantity > 0) {
-                window.buy(id, quantity);
+
+            let qty = Math.floor(state.cash / comp.price);
+            while (qty > 0) {
+                const { totalAmount } = calculateExecution('buy', comp.price, qty);
+                if (totalAmount <= state.cash) break;
+                qty--;
+            }
+
+            if (qty > 0) {
+                const { slippageRate } = calculateExecution('buy', comp.price, qty);
+                window.buy(id, qty, true); 
                 
-                // 25주 이상일 경우에만 상승 모멘텀 발동
-                if (quantity >= 25) { 
+                let msg = `[전량매수] ${comp.name} ${qty}주 체결.`;
+                if (slippageRate > 0) msg += ` (슬리피지 +${(slippageRate*100).toFixed(1)}% 적용)`;
+                addNotification(msg, 'info');
+
+                if (qty >= 25) { 
                     const impact = randomRange(0.01, 0.03);
                     state.playerImpacts.push({ companyId: id, impact: impact });
-                    addNotification(`[대량매수] ${comp.name} 상승 모멘텀(+${(impact*100).toFixed(1)}%) 발생!`, 'success');
+                    addNotification(`📈 [대량매수] ${comp.name} 상승 모멘텀(+${(impact*100).toFixed(1)}%) 발생!`, 'success');
                 }
+            } else {
+                 addNotification(`켈모리안 수수료(0.5%)를 지불할 현금이 부족합니다.`, 'error');
             }
         };
 
@@ -945,19 +985,24 @@
             if (state.status !== 'PLAYING') return;
             const holding = state.portfolio[id]?.quantity || 0;
             const comp = state.companies.find(c => c.id === id);
+            
             if (holding > 0 && comp) {
-                window.sell(id, holding);
+                const { slippageRate } = calculateExecution('sell', comp.price, holding);
+                window.sell(id, holding, true); 
                 
-                // 25주 이상일 경우에만 시장 패닉 발동
+                let msg = `[전량매도] ${comp.name} ${holding}주 체결.`;
+                if (slippageRate > 0) msg += ` (슬리피지 -${(slippageRate*100).toFixed(1)}% 적용)`;
+                addNotification(msg, 'info');
+
                 if (holding >= 25) {
                     const impact = randomRange(0.01, 0.03);
                     state.playerImpacts.push({ companyId: id, impact: -impact });
-                    addNotification(`[대량매도] ${comp.name} 시장 패닉(-${(impact*100).toFixed(1)}%) 유발!`, 'error');
+                    addNotification(`📉 [대량매도] ${comp.name} 시장 패닉(-${(impact*100).toFixed(1)}%) 유발!`, 'error');
                 }
             }
         };
 
-        window.startAction = (action, id, quantity, event) => {
+        window.startAction = (action, id, baseQuantity, event) => {
             if (state.status !== 'PLAYING') return;
             if (event && event.type === 'touchstart') {
                 isTouching = true;
@@ -967,26 +1012,41 @@
 
             window.stopAction(); 
 
-            if (action === 'buy') window.buy(id, quantity);
-            if (action === 'sell') window.sell(id, quantity);
+            let currentQty = baseQuantity;
+            if (action === 'buy') window.buy(id, currentQty, true);
+            if (action === 'sell') window.sell(id, currentQty, true);
 
             holdTimeout = setTimeout(() => {
+                let holdTick = 0;
                 holdInterval = setInterval(() => {
+                    holdTick++;
+                    if(holdTick > 5) currentQty = 5;
+                    if(holdTick > 15) currentQty = 15;
+                    if(holdTick > 30) currentQty = 50;
+
+                    let success = false;
                     if (action === 'buy') {
                         const comp = state.companies.find(c => c.id === id);
-                        if (!comp || state.cash < comp.price * quantity) {
-                            window.stopAction();
-                            return;
-                        }
-                        window.buy(id, quantity);
+                        if (!comp) { window.stopAction(); return; }
+                        const { totalAmount } = calculateExecution('buy', comp.price, currentQty);
+                        if (state.cash < totalAmount) { window.stopAction(); return; }
+                        success = window.buy(id, currentQty, true);
                     }
                     if (action === 'sell') {
                         const holding = state.portfolio[id]?.quantity || 0;
-                        if (state.level < 2 && holding < quantity) {
-                            window.stopAction();
-                            return;
+                        if (state.level < 2 && holding < currentQty) {
+                            window.stopAction(); return;
                         }
-                        window.sell(id, quantity);
+                        success = window.sell(id, currentQty, true);
+                    }
+                    
+                    if (success && currentQty >= 15 && holdTick % 10 === 0) {
+                        const compPrice = state.companies.find(c=>c.id===id).price;
+                        const { slippageRate } = calculateExecution(action, compPrice, currentQty);
+                        if (slippageRate > 0) {
+                            const sign = action === 'buy' ? '+' : '-';
+                            addNotification(`⚠️ 꾹 누르기로 인해 호가 슬리피지(${sign}${(slippageRate*100).toFixed(1)}%) 발생 중!`, 'error');
+                        }
                     }
                 }, 80); 
             }, 300);
@@ -1000,7 +1060,7 @@
             if (holdInterval) clearInterval(holdInterval);
         };
 
-        // --- 사채 수금 로직 ---
+        // --- 🚨 꼼수 방지 (강제 반대매매 페널티) ---
         function processRepayment() {
             let principalToPay = Math.min(state.loan, state.repaymentCycleAmount);
             let totalDue = principalToPay + state.interest;
@@ -1015,14 +1075,21 @@
                     addNotification('모든 사채를 청산했습니다! 승리를 향해 가십시오!', 'success');
                 }
             } else {
-                addNotification(`현금 부족! 전량 강제 매도 청산 진행!`, 'error');
+                addNotification(`현금 부족! 눈물의 똥꼬쇼(반대매매) 진행!`, 'error');
                 
                 Object.keys(state.portfolio).forEach(id => {
                     const comp = state.companies.find(c => c.id === id);
                     if (comp) {
                         const qty = state.portfolio[id].quantity;
-                        // 공매도(숏) 포지션일 때 청산하면 오히려 돈을 갚아야 하므로 강제 청산 시 현금이 깎입니다
-                        state.cash += comp.price * qty; 
+                        if (qty > 0) {
+                            const penaltyPrice = Math.floor(comp.price * randomRange(0.85, 0.90)); // 10~15% 깎기
+                            const { totalAmount } = calculateExecution('sell', penaltyPrice, qty);
+                            state.cash += totalAmount;
+                        } else if (qty < 0) {
+                            const penaltyPrice = Math.floor(comp.price * randomRange(1.10, 1.15)); // 10~15% 덤터기
+                            const { totalAmount } = calculateExecution('buy', penaltyPrice, Math.abs(qty));
+                            state.cash -= totalAmount;
+                        }
                     }
                 });
                 state.portfolio = {}; 
@@ -1050,10 +1117,8 @@
             if (timerInterval) clearInterval(timerInterval);
             if (gameInterval) clearInterval(gameInterval);
 
-            // 1초 타이머 루프
             timerInterval = setInterval(() => {
                 
-                // ✨ [Feature 1] 예약된 특수 이벤트(추가속보 등) 타이머 처리
                 for (let i = state.hiddenNoiseTimers.length - 1; i >= 0; i--) {
                     state.hiddenNoiseTimers[i].delay -= 1;
                     if (state.hiddenNoiseTimers[i].delay <= 0) {
@@ -1082,7 +1147,6 @@
                     }
                 }
 
-                // 블록딜 퀘스트 시스템 타이머 및 배너 업데이트
                 if (state.status === 'PLAYING') {
                     const questBanner = document.getElementById('quest-banner');
                     
@@ -1145,7 +1209,7 @@
                                 companyId: targetComp.id,
                                 targetQuantity: targetQuantity,
                                 premium: premium,
-                                timeLeft: 15 // 15초로 변경
+                                timeLeft: 15 
                             };
                             
                             let factionMsg = "";
@@ -1158,7 +1222,7 @@
                                 document.getElementById('quest-banner-target').innerText = targetComp.name;
                                 document.getElementById('quest-banner-qty').innerText = `${targetQuantity}주`;
                                 const timerEl = document.getElementById('quest-banner-timer');
-                                timerEl.innerText = '15'; // 15초로 변경
+                                timerEl.innerText = '15'; 
                                 timerEl.className = 'text-yellow-400'; 
                                 
                                 questBanner.classList.remove('-translate-y-[200%]');
@@ -1170,7 +1234,6 @@
 
                 let next = state.timerDisplay === 'ONAIR!' ? 5 : (state.timerDisplay === 1 ? 'ONAIR!' : state.timerDisplay - 1);
                 
-                // ✨ [Feature 3] 3회차 어둠의 정보상 (3초 전 예고)
                 if (next === 3 && state.level >= 3) {
                     const randomNewsTemplate = NEWS_POOL[Math.floor(Math.random() * NEWS_POOL.length)];
                     state.upcomingNews = { ...randomNewsTemplate };
@@ -1186,7 +1249,6 @@
                     }
                 }
 
-                // ONAIR! 이벤트 생성
                 if (next === 'ONAIR!') {
                     let randomNewsTemplate;
                     if (state.upcomingNews) {
@@ -1256,7 +1318,6 @@
                     } else if (randomNews.type === 'NOISE') {
                         state.news = { ...randomNews, text: newsText };
                         
-                        // ✨ [Feature 1] 찌라시 선행 지표 시스템
                         if (Math.random() < 0.70) {
                             const realNewsCandidates = NEWS_POOL.filter(n => n.type === 'SECTOR' || n.type === 'GLOBAL');
                             const targetNewsTemplate = realNewsCandidates[Math.floor(Math.random() * realNewsCandidates.length)];
@@ -1283,7 +1344,6 @@
                 
                 state.timerDisplay = next;
 
-                // ✨ [Feature 2] 테란 종족 패시브 - 10초마다 미네랄 배당금
                 if (state.status === 'PLAYING') {
                     state.terranDividendTimer -= 1;
                     if (state.terranDividendTimer <= 0) {
@@ -1303,7 +1363,6 @@
                     }
                 }
 
-                // 사채 이자 및 타이머 갱신
                 if (state.loan > 0 && state.status === 'PLAYING') {
                     state.repaymentTimer -= 1;
                     state.interest += 1500; 
@@ -1315,7 +1374,6 @@
                 renderHeader();
             }, 1000);
 
-            // 0.2초 시장 갱신 루프
             gameInterval = setInterval(() => {
                 const shouldAddNew = state.pendingEvents.addNew;
                 state.pendingEvents.addNew = false;
@@ -1323,7 +1381,6 @@
                 state.companies = state.companies.map(comp => {
                     let changeMultiplier = 1 + randomRange(-comp.volatility, comp.volatility);
                     
-                    // ✨ [Feature 3] 점진적 뉴스 충격 적용 (골든타임)
                     state.activeImpacts.forEach(active => {
                         let match = false;
                         if (active.type === 'GLOBAL') match = true;
@@ -1333,22 +1390,20 @@
                         if (match) {
                             let impactTick = active.impactPerTick;
 
-                            // ✨ [Feature 2] 종족별 고유 패시브 반영
                             if (comp.sector === '저그') {
-                                impactTick *= 1.8; // 저그: 하이리스크 하이리턴
+                                impactTick *= 1.8; 
                             } else if (comp.sector === '프로토스') {
-                                if (impactTick < 0) impactTick *= 0.5; // 프로토스: 악재 방어막(쉴드)
+                                if (impactTick < 0) impactTick *= 0.5; 
                             }
 
                             if (active.isDelist) {
-                                comp.price = 0; // 즉시 상폐 마커
+                                comp.price = 0; 
                             } else {
                                 changeMultiplier += impactTick;
                             }
                         }
                     });
 
-                    // ✨ [Feature 4] 플레이어 대규모 거래 시장 개입 처리
                     const pImpacts = state.playerImpacts.filter(p => p.companyId === comp.id);
                     pImpacts.forEach(pi => {
                         changeMultiplier += pi.impact;
@@ -1373,6 +1428,13 @@
                     allToDelist.forEach(bc => {
                         const reason = DELIST_REASONS[Math.floor(Math.random() * DELIST_REASONS.length)];
                         addNotification(`[${bc.name}] ${reason} 상장폐지!`, 'error');
+                        
+                        // 🚨 3. 공매도 유저 "상장폐지 꿀꺽" 시스템 정산
+                        const holding = state.portfolio[bc.id]?.quantity || 0;
+                        if (holding < 0) {
+                            addNotification(`📉 [공매도 대박] ${bc.name} 상장폐지로 부채 전액 탕감!`, 'success');
+                        }
+
                         delete state.portfolio[bc.id];
                         
                         if(state.activeQuest && state.activeQuest.companyId === bc.id) {
@@ -1423,7 +1485,7 @@
             }, 200);
         }
 
-        // --- 승패 로직 및 오버레이 ---
+        // --- 승패 및 🚨 마진콜 로직 ---
         function checkWinLoss() {
             let stockValue = 0;
             Object.entries(state.portfolio).forEach(([id, data]) => {
@@ -1433,7 +1495,13 @@
             const totalAsset = state.cash + stockValue;
             const currentLevelData = LEVEL_DATA[state.level - 1];
 
-            // ✨ 다회차(N회차) 승리 조건 검사
+            // 🚨 4. "내일은 없다" 무한 레버리지 제재 (마진콜)
+            if (totalAsset < 0 && state.status === 'PLAYING') {
+                state.status = 'LOSE';
+                showOverlay('🚨 마진콜 (강제 청산)', `총 자산이 마이너스가 되어 켈모리안 용병단에 의해 우주 밖으로 방출되었습니다...`, 'text-red-500', '1회차로 돌아가기');
+                return;
+            }
+
             if (state.loan === 0 && totalAsset >= currentLevelData.goal) {
                 state.status = 'WIN';
                 if (state.level < LEVEL_DATA.length) {
@@ -1442,7 +1510,7 @@
                 } else {
                     showOverlay(`👑 코프룰루의 지배자 (최종 승리)`, `당신은 우주 최고의 재벌이 되었습니다.\n모든 회차를 클리어했습니다!`, 'text-yellow-400', '1회차로 돌아가기');
                 }
-            } else if (state.loan === 0 && totalAsset < 1000) {
+            } else if (state.loan === 0 && totalAsset < 1000 && state.status === 'PLAYING') {
                 state.status = 'LOSE';
                 showOverlay('☠️ 완전 파산 (패배)', `빚은 다 갚았지만 총 자산이 1,000 미네랄 미만으로 떨어졌습니다...\n저글링 밥으로 전락했습니다.`, 'text-red-500', '1회차로 돌아가기');
             }
@@ -1473,7 +1541,6 @@
             startLoops();
         };
 
-        // ✨ 다회차(N회차) 초기화 로직
         window.restartGame = () => {
             const overlay = document.getElementById('game-overlay');
             overlay.classList.add('hidden');
@@ -1482,9 +1549,9 @@
             let nextLevel = state.level;
             if (state.status === 'WIN') {
                 if (state.level < LEVEL_DATA.length) nextLevel++;
-                else nextLevel = 1; // 끝까지 깼으면 다시 1회차로
+                else nextLevel = 1;
             } else {
-                nextLevel = 1; // 지면 무조건 1회차로
+                nextLevel = 1; 
             }
 
             const lvData = LEVEL_DATA[nextLevel - 1];
@@ -1499,11 +1566,10 @@
                 questBanner.classList.add('-translate-y-[200%]');
             }
 
-            // 회차별 정보 UI 반영
             document.getElementById('start-overlay-title').innerText = lvData.title;
             document.getElementById('start-overlay-loan').innerText = `${formatMoney(lvData.loan)} 미네랄`;
             document.getElementById('start-overlay-goal').innerText = `사채 전액 상환 및 총 자산 ${formatMoney(lvData.goal)} 돌파`;
-            document.getElementById('start-overlay-desc').innerText = lvData.desc.replace(/🔓 /g, ''); // 팁에서 🔓 제거 출력
+            document.getElementById('start-overlay-desc').innerText = lvData.desc.replace(/🔓 /g, ''); 
 
             state = {
                 level: nextLevel,
@@ -1539,7 +1605,6 @@
             init();
         };
 
-        // 앱 시작
         init();
     </script>
 </body>
