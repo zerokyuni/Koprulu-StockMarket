@@ -53,8 +53,22 @@
         }
     </style>
 </head>
-<body class="h-[100dvh] w-screen bg-slate-900 text-slate-100 flex flex-col font-sans overflow-hidden">
+<body class="h-[100dvh] w-screen bg-slate-900 text-slate-100 flex flex-col font-sans overflow-hidden relative">
     
+    <!-- 🌟 블록딜 퀘스트 상단 고정 배너 (위에서 아래로 등장) -->
+    <div id="quest-banner" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[95%] max-w-lg bg-gradient-to-r from-yellow-950/95 via-yellow-900/95 to-yellow-950/95 border-2 border-yellow-500 rounded-xl shadow-[0_10px_25px_rgba(234,179,8,0.3)] text-yellow-100 p-3 transform -translate-y-[200%] transition-transform duration-500 ease-out flex items-center justify-between pointer-events-none">
+        <div class="flex flex-col">
+            <span id="quest-banner-title" class="font-black text-yellow-400 text-[10px] lg:text-xs drop-shadow-md">🛡️ 자치령 조달청 특별 의뢰!</span>
+            <div class="font-bold text-sm lg:text-base mt-0.5">
+                <span id="quest-banner-target" class="text-white">마린건설</span> <span id="quest-banner-qty" class="text-yellow-300">15주</span> 납품
+            </div>
+        </div>
+        <div class="flex flex-col items-end bg-yellow-950/50 rounded-lg px-3 py-1 border border-yellow-600/50 shadow-inner">
+            <span class="text-[9px] lg:text-[10px] text-yellow-200/80 font-bold mb-0.5">마감까지</span>
+            <span class="font-black text-xl lg:text-2xl drop-shadow-[0_0_5px_rgba(250,204,21,0.8)] leading-none"><span id="quest-banner-timer" class="text-yellow-400">30</span>초</span>
+        </div>
+    </div>
+
     <!-- 헤더 영역 -->
     <header class="shrink-0 bg-slate-800 border-b border-slate-700 flex flex-col z-20">
         <!-- 상단 타이틀 및 자산 -->
@@ -235,6 +249,13 @@
             '프로토스': '#eab308'
         };
 
+        // ✨ 종목 이름 및 성격 라벨 적용
+        const SECTOR_LABELS = {
+            '테란': '⚒ 테란 (배당주)',
+            '저그': '🧠 저그 (테마주)',
+            '프로토스': '💎 프로토스 (방어주)'
+        };
+
         const COMPANY_NAMES = {
             '테란': ['마린건설', '시즈정밀', '벙커산업', '골리앗기계', 'SCV토건', '벌처모터스', '배틀엔지니어', '레이스항공', '고스트전자', '팩토리중공업', '배럭스건설', '메딕제약', '파이어뱃가스'],
             '저그': ['퀸메디', '울트라제약', '뮤탈바이오', '저글링생명', '해처리세포', '디파질병랩', '스포어연구소', '오버로드유전', '성큰메디컬', '히드라약품', '크립바이오', '럴커엔지니어', '스콜지항공'],
@@ -367,9 +388,19 @@
             notifications: [],
             timerDisplay: 5,
             
-            // Pending Events handling
+            // [Feature 1 & 3] 점진적 반영 및 스케줄링 관리
+            activeImpacts: [],
+            playerImpacts: [],
+            hiddenNoiseTimers: [],
             scheduledSpecialEvent: null,
-            pendingEvents: { impact: null, specialImpact: null, globalImpact: null, addNew: false },
+            pendingEvents: { addNew: false },
+            
+            // [Feature 2] 테란 종족 패시브 (배당금 타이머)
+            terranDividendTimer: 10,
+            
+            // [Feature 5] 블록딜 퀘스트 시스템 상태
+            activeQuest: null,
+            questCooldown: 60, // 첫 퀘스트까지 60초 대기
             
             status: 'START',
             
@@ -389,10 +420,31 @@
         let holdInterval = null;
         let isTouching = false;
 
+        // --- 점진적 충격 주입 함수 (Feature 3) ---
+        function setupGradualImpact(newsObj) {
+            const ticks = 15; // 0.2초 * 15 = 3초 (골든타임)
+            const impactPerTick = newsObj.actualImpact / ticks;
+
+            if (newsObj.type === 'GLOBAL') {
+                state.activeImpacts.push({ type: 'GLOBAL', ticks, impactPerTick });
+            } else if (newsObj.type === 'SECTOR') {
+                state.activeImpacts.push({ type: 'SECTOR', sector: newsObj.sector, ticks, impactPerTick });
+            } else if (newsObj.type === 'COMPANY' && newsObj.companyId) {
+                state.activeImpacts.push({ type: 'COMPANY', companyId: newsObj.companyId, ticks, impactPerTick });
+            }
+        }
+
         const generateCompany = (sector, basePrice = null) => {
             const names = COMPANY_NAMES[sector];
             const name = names[Math.floor(Math.random() * names.length)];
             const price = basePrice || Math.floor(randomRange(1000, 50000));
+            
+            // [Feature 2] 종족별 고유 패시브 (기본 변동성 차이)
+            let vol = 0;
+            if (sector === '테란') vol = randomRange(0.001, 0.004); // 가장 안정적
+            else if (sector === '저그') vol = randomRange(0.004, 0.016); // 가장 극단적 (1.5배~2배 이상)
+            else if (sector === '프로토스') vol = randomRange(0.002, 0.008); // 중간
+
             return {
                 id: Math.random().toString(36).substr(2, 9),
                 name: name,
@@ -400,7 +452,7 @@
                 price: price,
                 prevPrice: price,
                 history: Array(MAX_HISTORY).fill(price),
-                volatility: randomRange(0.002, 0.01)
+                volatility: vol
             };
         };
 
@@ -408,7 +460,7 @@
             const html = SECTORS.map(sector => `
                 <div class="flex-1 flex flex-col bg-slate-900/50 rounded lg:rounded-xl border border-slate-700/50 overflow-hidden min-w-0 h-full">
                     <div class="p-1 lg:p-2 text-center font-black text-[10px] lg:text-base border-b border-slate-700/50 bg-slate-800/80 shadow-sm shrink-0 truncate" style="color: ${SECTOR_COLORS[sector]}">
-                        ${sector}
+                        ${SECTOR_LABELS[sector]}
                     </div>
                     <div id="sector-list-${sector}" class="flex-1 overflow-y-auto custom-scrollbar p-1 lg:p-2 flex flex-col gap-1 lg:gap-2 pb-8">
                         <!-- 카드가 들어갈 자리 -->
@@ -421,7 +473,7 @@
         function initSectorStatusDOM() {
             const html = SECTORS.map(sector => `
                 <div class="snap-start shrink-0 w-[6rem] lg:w-full bg-slate-800 rounded-lg p-1.5 lg:p-3 border border-slate-700 flex flex-col lg:flex-row lg:justify-between items-center shadow-md transition-all" style="border-top-width: 3px; border-top-color: ${SECTOR_COLORS[sector]}">
-                    <span class="font-bold text-slate-300 text-[10px] lg:text-sm">${sector}</span>
+                    <span class="font-bold text-slate-300 text-[10px] lg:text-sm">${SECTOR_LABELS[sector]}</span>
                     <div class="lg:text-right">
                         <div id="sector-price-${sector}" class="text-[11px] lg:text-base font-black text-white mt-0.5 lg:mt-0">0</div>
                         <div id="sector-diff-${sector}" class="flex items-center lg:justify-end text-[9px] lg:text-xs font-bold mt-0.5 lg:mt-0"></div>
@@ -541,9 +593,9 @@
                 const impactClass = isGood ? 'text-red-500' : 'text-blue-500';
                 const textClass = isGood ? 'text-red-400' : 'text-blue-400';
                 
-                let tagText = n.sector ? `${n.sector}${isGood ? '호재' : '악재'}` : '';
-                if (n.type === 'GLOBAL') tagText = `거시경제 ${isGood ? '호재' : '악재'}`;
-                if (n.type === 'COMPANY') tagText = `개별특보 ${isGood ? '호재' : '악재'}`;
+                let tagText = n.sector ? `${SECTOR_LABELS[n.sector].split(' ')[0]} ${n.sector} ${isGood ? '호재' : '악재'}` : '';
+                if (n.type === 'GLOBAL') tagText = `🌍 거시경제 ${isGood ? '호재' : '악재'}`;
+                if (n.type === 'COMPANY') tagText = `🏢 개별특보 ${isGood ? '호재' : '악재'}`;
 
                 newsHtml = `<div class="text-[10px] lg:text-sm leading-tight lg:leading-normal font-medium whitespace-normal break-keep animate-[fadeIn_0.5s_ease-out] ${textClass}">
                     <span class="mr-1 font-black ${impactClass}">[${tagText}]</span>${n.text}
@@ -562,7 +614,7 @@
             container.innerHTML = SECTORS.map(sector => `
                 <div class="flex items-center gap-1 text-[9px] lg:text-xs font-bold text-slate-200">
                     <div class="w-2 h-2 lg:w-3 lg:h-3 rounded-full shadow-[0_0_5px_rgba(255,255,255,0.5)]" style="background-color: ${SECTOR_COLORS[sector]}"></div>
-                    ${sector}
+                    ${SECTOR_LABELS[sector]}
                 </div>
             `).join('');
         }
@@ -657,6 +709,11 @@
                 const canBuy = state.cash >= company.price;
                 const canSell = holding > 0;
 
+                // [블록딜 퀘스트] UI 처리 (초 단위는 배너에만 표시하도록 간소화)
+                const isQuestTarget = state.activeQuest && state.activeQuest.companyId === company.id;
+                const questRingClass = isQuestTarget ? 'ring-2 ring-yellow-400 animate-pulse' : '';
+                const questText = isQuestTarget ? `<span class="text-yellow-400 text-[9px] ml-1 whitespace-nowrap">[의뢰: ${holding}/${state.activeQuest.targetQuantity}주]</span>` : '';
+
                 let card = document.getElementById(`card-${company.id}`);
 
                 if (!card) {
@@ -665,8 +722,8 @@
 
                     // 'invisible' 클래스를 사용하여 holding 컨테이너의 영역을 유지하면서 안보이게 함
                     const cardHtml = `
-                        <div id="card-${company.id}" data-id="${company.id}" class="company-card bg-slate-800 rounded lg:rounded-lg border border-slate-700 p-1 lg:p-2 flex flex-col shadow-sm transition-all duration-300">
-                            <div class="font-bold text-white text-[9px] lg:text-sm truncate w-full" title="${company.name}">${company.name}</div>
+                        <div id="card-${company.id}" data-id="${company.id}" class="company-card bg-slate-800 rounded lg:rounded-lg border border-slate-700 p-1 lg:p-2 flex flex-col shadow-sm transition-all duration-300 ${questRingClass}">
+                            <div id="title-${company.id}" class="font-bold text-white text-[9px] lg:text-sm truncate w-full" title="${company.name}">${company.name}${questText}</div>
                             <div class="mt-0.5 lg:mt-1 flex flex-col lg:flex-row lg:justify-between lg:items-end">
                                 <span id="price-${company.id}" class="font-bold text-[10px] lg:text-sm ${getColorClass(diff)}">${formatMoney(company.price)}</span>
                                 <span id="diff-${company.id}" class="text-[8px] lg:text-xs font-medium ${getColorClass(diff)}">
@@ -689,6 +746,16 @@
                     `;
                     list.insertAdjacentHTML('beforeend', cardHtml);
                 } else {
+                    // [블록딜 퀘스트] 카드 업데이트 로직
+                    if(isQuestTarget) {
+                        card.classList.add('ring-2', 'ring-yellow-400', 'animate-pulse');
+                    } else {
+                        card.classList.remove('ring-2', 'ring-yellow-400', 'animate-pulse');
+                    }
+                    
+                    const titleEl = document.getElementById(`title-${company.id}`);
+                    if (titleEl) titleEl.innerHTML = `${company.name}${questText}`;
+
                     const priceEl = document.getElementById(`price-${company.id}`);
                     priceEl.textContent = formatMoney(company.price);
                     priceEl.className = `font-bold text-[10px] lg:text-sm ${getColorClass(diff)}`;
@@ -712,7 +779,6 @@
                         holdingContainer.classList.add('invisible');
                     }
 
-                    // 매수/매도 버튼 비활성화 상태 동적 업데이트
                     const buyBtn = document.getElementById(`buy-btn-${company.id}`);
                     const buyAllBtn = document.getElementById(`buy-all-btn-${company.id}`);
                     if (buyBtn && buyAllBtn) {
@@ -801,22 +867,37 @@
             }
         };
 
-        // --- 전량 매수 / 전량 매도 ---
+        // --- [Feature 4] 전량 매수 / 전량 매도 및 시장 충격 ---
         window.buyAll = (id) => {
             if (state.status !== 'PLAYING') return;
             const comp = state.companies.find(c => c.id === id);
             if (!comp) return;
             const quantity = Math.floor(state.cash / comp.price);
             if (quantity > 0) {
+                const cost = quantity * comp.price;
                 window.buy(id, quantity);
+                
+                // 플레이어 시장 개입 (전량 매수 시 긍정적 충격)
+                if (cost >= 50000) { 
+                    state.playerImpacts.push({ companyId: id, impact: randomRange(0.01, 0.02) });
+                    addNotification(`[대량매수] ${comp.name} 주가 상승 모멘텀 발생!`, 'success');
+                }
             }
         };
 
         window.sellAll = (id) => {
             if (state.status !== 'PLAYING') return;
             const holding = state.portfolio[id]?.quantity || 0;
-            if (holding > 0) {
+            const comp = state.companies.find(c => c.id === id);
+            if (holding > 0 && comp) {
+                const revenue = holding * comp.price;
                 window.sell(id, holding);
+                
+                // 플레이어 시장 개입 (전량 매도 시 패닉 셀)
+                if (revenue >= 50000) {
+                    state.playerImpacts.push({ companyId: id, impact: -randomRange(0.01, 0.02) });
+                    addNotification(`[대량매도] ${comp.name} 시장 패닉 유발!`, 'error');
+                }
             }
         };
 
@@ -914,7 +995,19 @@
 
             // 1초 타이머 루프
             timerInterval = setInterval(() => {
-                // 1. 예약된 특수 이벤트(추가속보) 처리
+                
+                // [Feature 1 & 3] 예약된 특수 이벤트(추가속보 등) 타이머 처리
+                for (let i = state.hiddenNoiseTimers.length - 1; i >= 0; i--) {
+                    state.hiddenNoiseTimers[i].delay -= 1;
+                    if (state.hiddenNoiseTimers[i].delay <= 0) {
+                        const hiddenNews = state.hiddenNoiseTimers[i].news;
+                        state.news = hiddenNews; // 진짜 뉴스로 업데이트
+                        setupGradualImpact(hiddenNews);
+                        renderHeader(); // UI 강제 업데이트
+                        state.hiddenNoiseTimers.splice(i, 1);
+                    }
+                }
+
                 if (state.scheduledSpecialEvent) {
                     state.scheduledSpecialEvent.delay -= 1;
                     if (state.scheduledSpecialEvent.delay <= 0) {
@@ -923,14 +1016,129 @@
                             ...state.news,
                             text: state.news.text + ev.newsText
                         };
-                        state.pendingEvents.specialImpact = ev.impactData;
+                        
+                        // 돌발 기현상도 점진적 반영
+                        if (ev.impactData.isDelist) {
+                            state.activeImpacts.push({
+                                type: 'COMPANY',
+                                companyId: ev.impactData.companyId,
+                                ticks: 1, // 상폐는 즉시 적용
+                                isDelist: true,
+                                impactPerTick: 0
+                            });
+                        } else if (ev.impactData.impact !== null) {
+                            state.activeImpacts.push({
+                                type: 'COMPANY',
+                                companyId: ev.impactData.companyId,
+                                ticks: 15,
+                                impactPerTick: ev.impactData.impact / 15
+                            });
+                        }
+
+                        renderHeader();
                         state.scheduledSpecialEvent = null;
+                    }
+                }
+
+                // [Feature 5] 블록딜 퀘스트 시스템 타이머 및 배너 업데이트
+                if (state.status === 'PLAYING') {
+                    const questBanner = document.getElementById('quest-banner');
+                    
+                    if (state.activeQuest) {
+                        state.activeQuest.timeLeft -= 1;
+                        
+                        // 퀘스트 배너 업데이트
+                        if (questBanner) {
+                            const timerEl = document.getElementById('quest-banner-timer');
+                            timerEl.innerText = state.activeQuest.timeLeft;
+                            
+                            questBanner.classList.remove('-translate-y-[200%]');
+                            questBanner.classList.add('translate-y-0');
+                            
+                            // 5초 이하 시 붉은색 깜빡임 연출
+                            if (state.activeQuest.timeLeft <= 5) {
+                                timerEl.classList.add('text-red-500', 'animate-fast-blink');
+                                timerEl.classList.remove('text-yellow-400');
+                            } else {
+                                timerEl.classList.remove('text-red-500', 'animate-fast-blink');
+                                timerEl.classList.add('text-yellow-400');
+                            }
+                        }
+                        
+                        if (state.activeQuest.timeLeft <= 0) {
+                            const q = state.activeQuest;
+                            const comp = state.companies.find(c => c.id === q.companyId);
+                            const holding = state.portfolio[q.companyId]?.quantity || 0;
+
+                            // 퀘스트 결산
+                            if (comp && holding >= q.targetQuantity) {
+                                // 성공: 지정된 수량만큼 차감 후 프리미엄 대금 지급
+                                state.portfolio[q.companyId].quantity -= q.targetQuantity;
+                                if (state.portfolio[q.companyId].quantity === 0) delete state.portfolio[q.companyId];
+                                
+                                const reward = Math.floor(comp.price * q.targetQuantity * q.premium);
+                                state.cash += reward;
+                                addNotification(`💰 블록딜 체결! ${comp.name} 납품 성공 (+${formatMoney(reward)})`, 'success');
+                            } else {
+                                // 실패
+                                addNotification(`❌ 블록딜 실패... ${comp ? comp.name : '해당 기업'} 물량 확보에 실패했습니다.`, 'error');
+                            }
+                            
+                            state.activeQuest = null;
+                            state.questCooldown = Math.floor(randomRange(60, 90)); // 다음 퀘스트 쿨타임 지정
+                            
+                            if (questBanner) {
+                                questBanner.classList.remove('translate-y-0');
+                                questBanner.classList.add('-translate-y-[200%]');
+                            }
+                        }
+                    } else {
+                        // 퀘스트 대기 중 배너 숨김 처리
+                        if (questBanner) {
+                            questBanner.classList.remove('translate-y-0');
+                            questBanner.classList.add('-translate-y-[200%]');
+                        }
+
+                        state.questCooldown -= 1;
+                        if (state.questCooldown <= 0 && state.companies.length > 0) {
+                            // 새로운 블록딜 퀘스트 발생
+                            const targetComp = state.companies[Math.floor(Math.random() * state.companies.length)];
+                            // 현금 20만 미네랄 정도로 살 수 있는 수량 (최소 1주)
+                            const targetQuantity = Math.max(1, Math.floor(200000 / targetComp.price));
+                            const premium = randomRange(1.5, 2.0); // 1.5배 ~ 2.0배 시세 차익
+                            
+                            state.activeQuest = {
+                                companyId: targetComp.id,
+                                targetQuantity: targetQuantity,
+                                premium: premium,
+                                timeLeft: 30
+                            };
+                            
+                            // 종족별 테마 메시지
+                            let factionMsg = "";
+                            if(targetComp.sector === '테란') factionMsg = "🛡️ 자치령 조달청";
+                            else if(targetComp.sector === '저그') factionMsg = "👾 군단 진화장";
+                            else if(targetComp.sector === '프로토스') factionMsg = "✨ 대의회 차원관문";
+                            
+                            // 배너 DOM 초기 세팅
+                            if (questBanner) {
+                                document.getElementById('quest-banner-title').innerText = `${factionMsg} 특별 의뢰!`;
+                                document.getElementById('quest-banner-target').innerText = targetComp.name;
+                                document.getElementById('quest-banner-qty').innerText = `${targetQuantity}주`;
+                                const timerEl = document.getElementById('quest-banner-timer');
+                                timerEl.innerText = '30';
+                                timerEl.className = 'text-yellow-400'; // 리셋
+                                
+                                questBanner.classList.remove('-translate-y-[200%]');
+                                questBanner.classList.add('translate-y-0');
+                            }
+                        }
                     }
                 }
 
                 let next = state.timerDisplay === 'ONAIR!' ? 5 : (state.timerDisplay === 1 ? 'ONAIR!' : state.timerDisplay - 1);
                 
-                // 2. 일반 ONAIR! 이벤트 생성
+                // ONAIR! 이벤트 생성
                 if (next === 'ONAIR!') {
                     const randomNewsTemplate = NEWS_POOL[Math.floor(Math.random() * NEWS_POOL.length)];
                     let randomNews = { ...randomNewsTemplate };
@@ -971,42 +1179,79 @@
                                 };
                             }
                         }
-                        state.pendingEvents.impact = { sector: randomNews.sector, impact: actualImpact };
+                        
+                        state.news = { ...randomNews, actualImpact, isGood, text: newsText };
+                        setupGradualImpact(state.news);
 
                     } else if (randomNews.type === 'GLOBAL') {
-                        // 🌍 거시 경제 (전체 영향)
                         actualImpact = randomRange(randomNews.impact[0], randomNews.impact[1]);
                         isGood = actualImpact > 0;
-                        state.pendingEvents.globalImpact = actualImpact;
+                        state.news = { ...randomNews, actualImpact, isGood, text: newsText };
+                        setupGradualImpact(state.news);
 
                     } else if (randomNews.type === 'COMPANY') {
-                        // 🏢 특정 개별 기업 특보
                         if (state.companies.length > 0) {
                             const targetComp = state.companies[Math.floor(Math.random() * state.companies.length)];
                             actualImpact = randomRange(randomNews.impact[0], randomNews.impact[1]);
                             isGood = actualImpact > 0;
                             newsText = newsText.replace('{COMPANY_NAME}', targetComp.name);
-                            state.pendingEvents.specialImpact = { companyId: targetComp.id, impact: actualImpact, isDelist: false };
+                            state.news = { ...randomNews, actualImpact, isGood, text: newsText, companyId: targetComp.id };
+                            setupGradualImpact(state.news);
                         } else {
-                            randomNews.type = 'NOISE';
-                            newsText = "시장에 상장된 기업이 하나도 없어 고요합니다...";
+                            state.news = { type: 'NOISE', text: "시장에 상장된 기업이 하나도 없어 고요합니다..." };
+                        }
+                    } else if (randomNews.type === 'NOISE') {
+                        state.news = { ...randomNews, text: newsText };
+                        
+                        // [Feature 1] 찌라시 선행 지표 시스템 (70% 확률로 3~5초 뒤 진짜 뉴스 발동)
+                        if (Math.random() < 0.70) {
+                            const realNewsCandidates = NEWS_POOL.filter(n => n.type === 'SECTOR' || n.type === 'GLOBAL');
+                            const targetNewsTemplate = realNewsCandidates[Math.floor(Math.random() * realNewsCandidates.length)];
+                            let rActualImpact = randomRange(targetNewsTemplate.impact[0], targetNewsTemplate.impact[1]);
+                            let rIsGood = rActualImpact > 0;
+                            let scheduledText = `<span class="text-yellow-400 font-bold animate-pulse">[긴급속보]</span> ` + targetNewsTemplate.text;
+
+                            let realNewsObj = {
+                                ...targetNewsTemplate,
+                                actualImpact: rActualImpact,
+                                isGood: rIsGood,
+                                text: scheduledText
+                            };
+
+                            state.hiddenNoiseTimers.push({
+                                delay: Math.floor(randomRange(3, 5)),
+                                news: realNewsObj
+                            });
                         }
                     }
-                    
-                    state.news = { 
-                        ...randomNews, 
-                        actualImpact, 
-                        isGood, 
-                        text: newsText 
-                    };
                     
                     state.pendingEvents.addNew = Math.random() < 0.2;
                 }
                 
                 state.timerDisplay = next;
 
+                // [Feature 2] 테란 종족 패시브 - 10초마다 미네랄 배당금
+                if (state.status === 'PLAYING') {
+                    state.terranDividendTimer -= 1;
+                    if (state.terranDividendTimer <= 0) {
+                        let terranShares = 0;
+                        Object.keys(state.portfolio).forEach(id => {
+                            const comp = state.companies.find(c => c.id === id);
+                            if (comp && comp.sector === '테란') {
+                                terranShares += state.portfolio[id].quantity;
+                            }
+                        });
+                        if (terranShares > 0) {
+                            const dividend = terranShares * 50; 
+                            state.cash += dividend;
+                            addNotification(`[테란 배당금] +${formatMoney(dividend)} 입금`, 'success');
+                        }
+                        state.terranDividendTimer = 10; // 리셋
+                    }
+                }
+
                 // 사채 이자 및 타이머 갱신
-                if (state.loan > 0) {
+                if (state.loan > 0 && state.status === 'PLAYING') {
                     state.repaymentTimer -= 1;
                     state.interest += 1500; 
                     if (state.repaymentTimer <= 0) {
@@ -1019,34 +1264,42 @@
 
             // 0.2초 시장 갱신 루프
             gameInterval = setInterval(() => {
-                const globalImpactToApply = state.pendingEvents.globalImpact;
-                const impactToApply = state.pendingEvents.impact;
-                const specialImpactToApply = state.pendingEvents.specialImpact;
                 const shouldAddNew = state.pendingEvents.addNew;
-                
-                state.pendingEvents = { impact: null, specialImpact: null, globalImpact: null, addNew: false };
+                state.pendingEvents.addNew = false;
 
                 state.companies = state.companies.map(comp => {
                     let changeMultiplier = 1 + randomRange(-comp.volatility, comp.volatility);
                     
-                    // 1. 글로벌 경제 전체 파동 적용
-                    if (globalImpactToApply !== null) {
-                        changeMultiplier += globalImpactToApply;
-                    }
+                    // [Feature 3] 점진적 뉴스 충격 적용 (골든타임)
+                    state.activeImpacts.forEach(active => {
+                        let match = false;
+                        if (active.type === 'GLOBAL') match = true;
+                        else if (active.type === 'SECTOR' && active.sector === comp.sector) match = true;
+                        else if (active.type === 'COMPANY' && active.companyId === comp.id) match = true;
 
-                    // 2. 섹터별 파동 적용
-                    if (impactToApply && impactToApply.sector === comp.sector) {
-                        changeMultiplier += impactToApply.impact;
-                    }
-                    
-                    // 3. 개별 기업 특보 및 돌발 기현상 
-                    if (specialImpactToApply && specialImpactToApply.companyId === comp.id) {
-                        if (specialImpactToApply.isDelist) {
-                            comp.price = 0; 
-                        } else if (specialImpactToApply.impact !== null) {
-                            changeMultiplier += specialImpactToApply.impact;
+                        if (match) {
+                            let impactTick = active.impactPerTick;
+
+                            // [Feature 2] 종족별 고유 패시브 반영
+                            if (comp.sector === '저그') {
+                                impactTick *= 1.8; // 저그: 하이리스크 하이리턴
+                            } else if (comp.sector === '프로토스') {
+                                if (impactTick < 0) impactTick *= 0.5; // 프로토스: 악재 방어막(쉴드)
+                            }
+
+                            if (active.isDelist) {
+                                comp.price = 0; // 즉시 상폐 마커
+                            } else {
+                                changeMultiplier += impactTick;
+                            }
                         }
-                    }
+                    });
+
+                    // [Feature 4] 플레이어 대규모 거래 시장 개입 처리
+                    const pImpacts = state.playerImpacts.filter(p => p.companyId === comp.id);
+                    pImpacts.forEach(pi => {
+                        changeMultiplier += pi.impact;
+                    });
 
                     let newPrice = comp.price === 0 ? 0 : Math.floor(comp.price * changeMultiplier);
                     if (newPrice > 0 && newPrice < 100) newPrice = 50; 
@@ -1055,7 +1308,12 @@
                     return { ...comp, prevPrice: comp.price, price: newPrice, history: newHistory };
                 });
 
-                // 상장폐지 (테마 텍스트 뱅크 적용)
+                // 충격 및 플레이어 개입 배열 정리
+                state.activeImpacts.forEach(a => a.ticks -= 1);
+                state.activeImpacts = state.activeImpacts.filter(a => a.ticks > 0);
+                state.playerImpacts = []; 
+
+                // 상장폐지 처리
                 const specialDelisted = state.companies.filter(c => c.price === 0);
                 const bankruptCompanies = state.companies.filter(c => c.price > 0 && c.price <= 50 && Math.random() < 0.06);
                 const allToDelist = [...specialDelisted, ...bankruptCompanies];
@@ -1065,11 +1323,23 @@
                         const reason = DELIST_REASONS[Math.floor(Math.random() * DELIST_REASONS.length)];
                         addNotification(`[${bc.name}] ${reason} 상장폐지!`, 'error');
                         delete state.portfolio[bc.id];
+                        
+                        // 상장폐지 시 블록딜 퀘스트 대상이면 자동 실패 처리
+                        if(state.activeQuest && state.activeQuest.companyId === bc.id) {
+                             state.activeQuest = null;
+                             state.questCooldown = Math.floor(randomRange(60, 90));
+                             
+                             const questBanner = document.getElementById('quest-banner');
+                             if(questBanner) {
+                                 questBanner.classList.remove('translate-y-0');
+                                 questBanner.classList.add('-translate-y-[200%]');
+                             }
+                        }
                     });
                     state.companies = state.companies.filter(c => !allToDelist.includes(c));
                 }
 
-                // 신규 상장 (테마 텍스트 뱅크 적용)
+                // 신규 상장 처리
                 if (shouldAddNew && state.companies.length < 15) { 
                     const randomSector = SECTORS[Math.floor(Math.random() * SECTORS.length)];
                     let newComp;
@@ -1099,7 +1369,7 @@
 
                 renderChart();
                 renderSectorStatus();
-                renderCompanies();
+                renderCompanies(); 
                 renderHeader(); 
 
                 checkWinLoss(); 
@@ -1156,6 +1426,13 @@
             startOverlay.classList.remove('hidden');
             startOverlay.classList.add('flex');
             
+            // 배너 초기화
+            const questBanner = document.getElementById('quest-banner');
+            if(questBanner) {
+                questBanner.classList.remove('translate-y-0');
+                questBanner.classList.add('-translate-y-[200%]');
+            }
+
             state = {
                 cash: INITIAL_LOAN,
                 portfolio: {}, 
@@ -1164,8 +1441,19 @@
                 news: { text: "새로운 시뮬레이션이 시작되었습니다.", type: 'NOISE' },
                 notifications: [],
                 timerDisplay: 5,
+                
+                // 상태 초기화 포함
+                activeImpacts: [],
+                playerImpacts: [],
+                hiddenNoiseTimers: [],
+                terranDividendTimer: 10,
                 scheduledSpecialEvent: null,
-                pendingEvents: { impact: null, specialImpact: null, globalImpact: null, addNew: false },
+                pendingEvents: { addNew: false },
+                
+                // 블록딜 퀘스트 상태 초기화
+                activeQuest: null,
+                questCooldown: 60,
+                
                 status: 'START',
                 loan: INITIAL_LOAN,
                 interest: 0,
