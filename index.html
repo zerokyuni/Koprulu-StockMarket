@@ -425,7 +425,6 @@
             scheduledSpecialEvent: null,
             pendingEvents: { addNew: false },
             
-            // ✨ [Feature 2] 작전 세력 타겟
             rugPullTarget: null,
             
             terranDividendTimer: 10,
@@ -494,7 +493,8 @@
                 prevPrice: price,
                 history: Array(MAX_HISTORY).fill(price),
                 volatility: vol,
-                haltTimer: 0 // ✨ [Feature 1] 서킷 브레이커 타이머 추가
+                haltTimer: 0,
+                haltCooldown: 0 // ✨ [Feature 1] 서킷 브레이커 연속 발동 방지 쿨타임
             };
         };
 
@@ -792,7 +792,6 @@
                 const questRingClass = isQuestTarget ? 'ring-2 ring-yellow-400 animate-pulse' : '';
                 const questText = isQuestTarget ? `<span class="text-yellow-400 text-[9px] ml-1 whitespace-nowrap">[의뢰: ${holding}/${state.activeQuest.targetQuantity}주]</span>` : '';
                 
-                // ✨ [Feature 1] 서킷 브레이커 거래정지 표시
                 const isHalted = company.haltTimer && company.haltTimer > 0;
                 const haltText = isHalted ? `<span class="text-red-500 text-[9px] ml-1 font-black animate-pulse">[거래정지]</span>` : '';
 
@@ -1241,7 +1240,6 @@
                                 state.cash += reward;
                                 addNotification(`💰 블록딜 체결! ${comp.name} 납품 성공 (+${formatMoney(reward)})`, 'success');
                             } else {
-                                // ✨ [Feature 2] 공매도 악용 트랩
                                 if (holding < 0) {
                                     const penalty = Math.floor(state.cash * 0.3);
                                     state.cash -= penalty;
@@ -1473,7 +1471,6 @@
                 const shouldAddNew = state.pendingEvents.addNew;
                 state.pendingEvents.addNew = false;
                 
-                // ✨ [Feature 2] 작전 세력 (Rug Pull) 스케줄링 로직
                 if (!state.rugPullTarget && state.status === 'PLAYING' && Math.random() < 0.001) { 
                     const targets = state.companies.filter(c => c.price < 10000);
                     if (targets.length > 0) {
@@ -1485,7 +1482,6 @@
                 state.companies = state.companies.map(comp => {
                     let changeMultiplier = 1 + randomRange(-comp.volatility, comp.volatility);
                     
-                    // ✨ [Feature 2] 작전 세력 펌프/덤프 적용
                     if (state.rugPullTarget && state.rugPullTarget.companyId === comp.id) {
                         if (state.rugPullTarget.phase === 'pump') {
                             changeMultiplier += randomRange(0.05, 0.10);
@@ -1543,25 +1539,29 @@
                     });
 
                     let newPrice = comp.price === 0 ? 0 : Math.floor(comp.price * changeMultiplier);
-                    if (newPrice > 0 && newPrice < 50) newPrice = 50; // 하한선 보정
+                    if (newPrice > 0 && newPrice < 50) newPrice = 50; 
                     
                     let newHistory = [...comp.history.slice(1), newPrice];
 
-                    // ✨ [Feature 1] 서킷 브레이커 감지 및 타이머 제어
+                    // ✨ [Feature 1] 서킷 브레이커 감지 및 쿨타임 제어
                     if (comp.haltTimer && comp.haltTimer > 0) {
                         comp.haltTimer -= 1;
                     }
-                    if (newHistory.length >= 10) {
-                        const pastPrice = newHistory[newHistory.length - 10];
-                        if (pastPrice > 0 && Math.abs(newPrice - pastPrice) / pastPrice >= 0.4) {
-                            if (!comp.haltTimer || comp.haltTimer <= 0) {
+                    if (comp.haltCooldown && comp.haltCooldown > 0) {
+                        comp.haltCooldown -= 1;
+                    }
+
+                    if (newHistory.length >= 15) {
+                        const pastPrice = newHistory[newHistory.length - 15];
+                        if (pastPrice > 500 && Math.abs(newPrice - pastPrice) / pastPrice >= 0.70) {
+                            if ((!comp.haltTimer || comp.haltTimer <= 0) && (!comp.haltCooldown || comp.haltCooldown <= 0)) {
                                 comp.haltTimer = 25; 
+                                comp.haltCooldown = 150; 
                                 addNotification(`🚨 [투자 경고] 자치령 금감원에서 ${comp.name}의 비정상적 변동을 감지하여 5초간 거래를 정지합니다!`, 'error');
                             }
                         }
                     }
 
-                    // 주식 액면분할 (Stock Split) 시스템
                     if (newPrice >= 100000) {
                         newPrice = Math.floor(newPrice / 10);
                         comp.prevPrice = Math.floor(comp.prevPrice / 10);
@@ -1593,9 +1593,8 @@
                 if (allToDelist.length > 0) {
                     allToDelist.forEach(bc => {
                         
-                        // ✨ [Feature 3] 적대적 M&A 분기 (특수 상폐 제외, 파산 직전일 때 20% 확률)
                         if (bc.price > 0 && Math.random() < 0.20) {
-                            const jumpMultiplier = randomRange(4.0, 6.0); // +300% ~ +500%
+                            const jumpMultiplier = randomRange(4.0, 6.0); 
                             const finalPrice = Math.floor(bc.price * jumpMultiplier);
                             const holding = state.portfolio[bc.id]?.quantity || 0;
                             
@@ -1609,7 +1608,6 @@
                                 }
                             }
 
-                            // 숏 스퀴즈 파산 검사
                             let currentTotalAsset = state.cash;
                             Object.entries(state.portfolio).forEach(([id, data]) => {
                                 if (id !== bc.id) { 
@@ -1638,7 +1636,6 @@
                                  }
                             }
                         } else {
-                            // 일반 파산
                             const reason = DELIST_REASONS[Math.floor(Math.random() * DELIST_REASONS.length)];
                             addNotification(`[${bc.name}] ${reason} 상장폐지!`, 'error');
                             
@@ -1659,7 +1656,6 @@
                                  }
                             }
 
-                            // 상장폐지 연쇄 재앙/호재 (Black Swan)
                             if (bc.sector === '저그') {
                                 state.activeImpacts.push({ type: 'SECTOR', sector: '저그', ticks: 1, impactPerTick: 0.15 / 1.8 }); 
                                 addNotification(`🧬 [저그 크립 과영양] 파산한 기업이 크립 위에서 부패하면서, 다른 저그 기업들이 잉여 영양을 흡수해 성장합니다! (+15%)`, 'success');
@@ -1676,7 +1672,6 @@
                     state.companies = state.companies.filter(c => !allToDelist.includes(c));
                 }
 
-                // 숏 스퀴즈 발생 시 즉시 루프 중단
                 if (shortSqueezeGameOver) {
                     clearInterval(gameInterval);
                     clearInterval(timerInterval);
