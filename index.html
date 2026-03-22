@@ -342,7 +342,7 @@
             { type: 'SECTOR', sector: '테란', impact: [0.15, 0.35], text: "[단독] SCV토건, 미네랄 채취 속도 200% 증가하는 혁신 다이아 드릴 개발!" },
             { type: 'SECTOR', sector: '테란', impact: [0.20, 0.40], text: "[속보] 시즈정밀, 사거리 3배 늘어난 '슈퍼 울트라 시즈모드 엔진' 상용화 성공" },
             { type: 'SECTOR', sector: '테란', impact: [0.20, 0.45], text: "[속보] 배틀엔지니어, 야마토 포 발사 대기시간 0.5초로 단축하는 신기술 발표!" },
-            { type: 'SECTOR', sector: '테란', impact: [0.15, 0.35], text: "마린건설, 신도시 '뉴 코할' 프로젝트 수주 성공! 매출 대박 조짐" },
+            { type: 'SECTOR', sector: '테란', impact: [0.15, 0.35], text: "마린건설, 신도시 '뉴 코랄' 프로젝트 수주 성공! 매출 대박 조짐" },
             { type: 'SECTOR', sector: '테란', impact: [-0.30, -0.15], text: "벙커산업 부실 공사 논란... 저글링 3마리 발톱에 벙커 와르르 무너져" },
             { type: 'SECTOR', sector: '테란', impact: [-0.40, -0.20], text: "골리앗기계, 부품 결함으로 대공 미사일이 아군 배틀크루저 격추해 주가 폭락" },
             { type: 'SECTOR', sector: '테란', impact: [-0.45, -0.25], text: "고스트전자, 핵 미사일 좌표 오류로 아군 사령부 타격... 사상 최악의 참사" },
@@ -368,12 +368,12 @@
             { type: 'SECTOR', sector: '저그', impact: [0.15, 0.35], text: "스포어연구소, 투명 유닛 100km 밖에서 감지하는 슈퍼 포자 상용화 돌입" },
             { type: 'SECTOR', sector: '저그', impact: [-0.40, -0.20], text: "울트라제약, 신약 부작용으로 몸집만 커지고 지능은 퇴화... 대규모 임상 실패" },
             { type: 'SECTOR', sector: '저그', impact: [-0.35, -0.15], text: "뮤탈바이오, 쓰리쿠션 공격 물질 유출 사고 발생... 연구소 및 인근 초토화" },
-            { type: 'SECTOR', sector: '저그', impact: [-0.45, -0.20], text: "디파질병랩, 아군도 감염시키는 통제불능 플레이그 유출 사태로 본진 궤멸" },
+            { type: 'SECTOR', sector: '저그', impact: [-0.45, -0.20], text: "디파질병랩, 아군 피해 0%인 '선택적 플레이그' 상용화 발표에 주가 급등" },
             { type: 'SECTOR', sector: '저그', impact: [-0.35, -0.15], text: "크립바이오, 곰팡이 핀 불량 점막(크립) 유통으로 저그 연합으로부터 고소당해" },
             { type: 'SECTOR', sector: '저그', impact: [0.25, 0.45], text: "[속보] 럴커엔지니어, 스파인 사거리 맵 끝까지 닿는 '지진파 기술' 성공! 테란 초비상" },
             { type: 'SECTOR', sector: '저그', impact: [0.15, 0.35], text: "[단독] 스콜지항공, 배틀크루저 레이저 100% 회피하는 곡예 비행 AI 도입" },
             { type: 'SECTOR', sector: '저그', impact: [0.15, 0.30], text: "[속보] 성큰메디컬, 적혈구 증식 촉진하는 촉수 마사지기 홈쇼핑 매진 행렬" },
-            { type: 'SECTOR', sector: '저그', impact: [0.20, 0.40], text: "디파질병랩, 아군 피해 0%인 '선택적 플레이그' 상용화 발표에 주가 급등" },
+            { type: 'SECTOR', sector: '저그', impact: [0.20, 0.40], text: "디파질병랩, 아군 피해 0%인 '선택적 다크 스웜' 상용화 발표에 주가 급등" },
             { type: 'SECTOR', sector: '저그', impact: [-0.35, -0.15], text: "오버로드유전, 속업 연구 예산 삭감 여파로 우주 택배 배송 3달 지연... 고객 이탈 가속" },
             { type: 'SECTOR', sector: '저그', impact: [-0.40, -0.20], text: "히드라약품, 기관지염 부작용으로 히드라리스크 대공 공격 불가 판정... 주가 급락" },
             { type: 'SECTOR', sector: '저그', impact: [-0.30, -0.15], text: "저글링생명, 아드레날린 과다 투여 부작용으로 저글링들이 미네랄을 뜯어먹는 기행 벌여" },
@@ -425,13 +425,13 @@
             scheduledSpecialEvent: null,
             pendingEvents: { addNew: false },
             
-            terranDividendTimer: 10,
+            // ✨ [Feature 2] 작전 세력 타겟
+            rugPullTarget: null,
             
+            terranDividendTimer: 10,
             activeQuest: null,
             questCooldown: 60,
-            
             status: 'START',
-            
             loan: LEVEL_DATA[0].loan,
             interest: 0,
             repaymentTimer: CYCLE_TIME,
@@ -493,7 +493,8 @@
                 price: price,
                 prevPrice: price,
                 history: Array(MAX_HISTORY).fill(price),
-                volatility: vol
+                volatility: vol,
+                haltTimer: 0 // ✨ [Feature 1] 서킷 브레이커 타이머 추가
             };
         };
 
@@ -791,6 +792,10 @@
                 const questRingClass = isQuestTarget ? 'ring-2 ring-yellow-400 animate-pulse' : '';
                 const questText = isQuestTarget ? `<span class="text-yellow-400 text-[9px] ml-1 whitespace-nowrap">[의뢰: ${holding}/${state.activeQuest.targetQuantity}주]</span>` : '';
                 
+                // ✨ [Feature 1] 서킷 브레이커 거래정지 표시
+                const isHalted = company.haltTimer && company.haltTimer > 0;
+                const haltText = isHalted ? `<span class="text-red-500 text-[9px] ml-1 font-black animate-pulse">[거래정지]</span>` : '';
+
                 const titleClass = state.level >= 4 ? 'cursor-pointer hover:text-yellow-300 transition-colors' : '';
                 const titleAction = state.level >= 4 ? `onclick="manipulateMarket('${company.id}')"` : '';
 
@@ -802,7 +807,7 @@
 
                     const cardHtml = `
                         <div id="card-${company.id}" data-id="${company.id}" class="company-card bg-slate-800 rounded lg:rounded-lg border border-slate-700 p-1 lg:p-2 flex flex-col shadow-sm transition-all duration-300 ${questRingClass}">
-                            <div id="title-${company.id}" class="font-bold text-white text-[9px] lg:text-sm w-full ${titleClass}" title="${company.name}" ${titleAction}>${company.name}${questText}</div>
+                            <div id="title-${company.id}" class="font-bold text-white text-[9px] lg:text-sm w-full ${titleClass}" title="${company.name}" ${titleAction}>${company.name}${questText}${haltText}</div>
                             <div class="mt-0.5 lg:mt-1 flex flex-col lg:flex-row lg:justify-between lg:items-end">
                                 <span id="price-${company.id}" class="font-bold text-[10px] lg:text-sm ${getColorClass(diff)}">${formatMoney(company.price)}</span>
                                 <span id="diff-${company.id}" class="text-[8px] lg:text-xs font-medium ${getColorClass(diff)}">
@@ -816,10 +821,10 @@
                                 </span>
                             </div>
                             <div class="grid grid-cols-2 gap-1 lg:gap-2 mt-1 lg:mt-2">
-                                <button id="buy-btn-${company.id}" oncontextmenu="return false;" onmousedown="startAction('buy', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('buy', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchmove="stopAction(event)" ontouchcancel="stopAction(event)" ${!canBuy ? 'disabled' : ''} class="bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white active:bg-red-600 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-red-500/30 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">매수</button>
-                                <button id="sell-btn-${company.id}" oncontextmenu="return false;" onmousedown="startAction('sell', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('sell', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchmove="stopAction(event)" ontouchcancel="stopAction(event)" ${!canSell ? 'disabled' : ''} class="bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white active:bg-blue-600 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-500/30 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">매도</button>
-                                <button id="buy-all-btn-${company.id}" onclick="buyAll('${company.id}')" ${!canBuy && !isShort ? 'disabled' : ''} class="bg-red-900/40 text-red-300 hover:bg-red-600 hover:text-white active:bg-red-700 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-red-700/50 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">${buyAllText}</button>
-                                <button id="sell-all-btn-${company.id}" onclick="sellAll('${company.id}')" ${!canSellAll ? 'disabled' : ''} class="bg-blue-900/40 text-blue-300 hover:bg-blue-600 hover:text-white active:bg-blue-700 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-700/50 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">전량매도</button>
+                                <button id="buy-btn-${company.id}" oncontextmenu="return false;" onmousedown="startAction('buy', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('buy', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchmove="stopAction(event)" ontouchcancel="stopAction(event)" ${(!canBuy || isHalted) ? 'disabled' : ''} class="bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white active:bg-red-600 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-red-500/30 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">매수</button>
+                                <button id="sell-btn-${company.id}" oncontextmenu="return false;" onmousedown="startAction('sell', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('sell', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchmove="stopAction(event)" ontouchcancel="stopAction(event)" ${(!canSell || isHalted) ? 'disabled' : ''} class="bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white active:bg-blue-600 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-500/30 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">매도</button>
+                                <button id="buy-all-btn-${company.id}" onclick="buyAll('${company.id}')" ${(!canBuy && !isShort) || isHalted ? 'disabled' : ''} class="bg-red-900/40 text-red-300 hover:bg-red-600 hover:text-white active:bg-red-700 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-red-700/50 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">${buyAllText}</button>
+                                <button id="sell-all-btn-${company.id}" onclick="sellAll('${company.id}')" ${!canSellAll || isHalted ? 'disabled' : ''} class="bg-blue-900/40 text-blue-300 hover:bg-blue-600 hover:text-white active:bg-blue-700 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-700/50 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">전량매도</button>
                             </div>
                         </div>
                     `;
@@ -830,7 +835,7 @@
                     
                     const titleEl = document.getElementById(`title-${company.id}`);
                     if (titleEl) {
-                        titleEl.innerHTML = `${company.name}${questText}`;
+                        titleEl.innerHTML = `${company.name}${questText}${haltText}`;
                         if(state.level >= 4) {
                             titleEl.className = `font-bold text-white text-[9px] lg:text-sm w-full cursor-pointer hover:text-yellow-300 transition-colors`;
                             titleEl.setAttribute('onclick', `manipulateMarket('${company.id}')`);
@@ -864,7 +869,7 @@
                     const buyAllBtn = document.getElementById(`buy-all-btn-${company.id}`);
                     if (buyBtn && buyAllBtn) {
                         buyAllBtn.innerText = buyAllText; 
-                        if (!canBuy && !isShort) {
+                        if (isHalted || (!canBuy && !isShort)) {
                             buyBtn.setAttribute('disabled', 'true');
                             buyAllBtn.setAttribute('disabled', 'true');
                         } else {
@@ -876,10 +881,10 @@
                     const sellBtn = document.getElementById(`sell-btn-${company.id}`);
                     const sellAllBtn = document.getElementById(`sell-all-btn-${company.id}`);
                     if (sellBtn && sellAllBtn) {
-                        if (!canSell) sellBtn.setAttribute('disabled', 'true');
+                        if (isHalted || !canSell) sellBtn.setAttribute('disabled', 'true');
                         else sellBtn.removeAttribute('disabled');
                         
-                        if (!canSellAll) sellAllBtn.setAttribute('disabled', 'true');
+                        if (isHalted || !canSellAll) sellAllBtn.setAttribute('disabled', 'true');
                         else sellAllBtn.removeAttribute('disabled');
                     }
                 }
@@ -918,7 +923,8 @@
             let success = false;
             let slippageRate = 0;
             const comp = state.companies.find(c => c.id === id);
-            if (!comp) return false;
+            // 🚨 서킷 브레이커 방어 로직
+            if (!comp || (comp.haltTimer && comp.haltTimer > 0)) return false;
 
             if (action === 'buy') {
                 const result = calculateExecution('buy', comp.price, qty);
@@ -987,7 +993,8 @@
         window.buyAll = (id) => {
             if (state.status !== 'PLAYING') return;
             const comp = state.companies.find(c => c.id === id);
-            if (!comp) return;
+            // 🚨 서킷 브레이커 방어 로직
+            if (!comp || (comp.haltTimer && comp.haltTimer > 0)) return;
 
             const holding = state.portfolio[id]?.quantity || 0;
 
@@ -1026,7 +1033,8 @@
             const holding = state.portfolio[id]?.quantity || 0;
             const comp = state.companies.find(c => c.id === id);
             
-            if (holding > 0 && comp) {
+            // 🚨 서킷 브레이커 방어 로직
+            if (holding > 0 && comp && (!comp.haltTimer || comp.haltTimer <= 0)) {
                 const { slippageRate } = calculateExecution('sell', comp.price, holding);
                 window.executeTrade('sell', id, holding, 0, true); 
                 
@@ -1130,6 +1138,7 @@
                     const comp = state.companies.find(c => c.id === id);
                     if (comp) {
                         const qty = state.portfolio[id].quantity;
+                        // 🚨 사채업자의 강제 청산은 서킷 브레이커(haltTimer)를 무시하고 징수함
                         if (qty > 0) {
                             const penaltyPrice = Math.floor(comp.price * randomRange(0.85, 0.90)); 
                             const { totalAmount } = calculateExecution('sell', penaltyPrice, qty);
@@ -1463,10 +1472,34 @@
             gameInterval = setInterval(() => {
                 const shouldAddNew = state.pendingEvents.addNew;
                 state.pendingEvents.addNew = false;
+                
+                // ✨ [Feature 2] 작전 세력 (Rug Pull) 스케줄링 로직
+                if (!state.rugPullTarget && state.status === 'PLAYING' && Math.random() < 0.001) { 
+                    const targets = state.companies.filter(c => c.price < 10000);
+                    if (targets.length > 0) {
+                        const target = targets[Math.floor(Math.random() * targets.length)];
+                        state.rugPullTarget = { companyId: target.id, ticksLeft: Math.floor(randomRange(15, 20)), phase: 'pump' };
+                    }
+                }
 
                 state.companies = state.companies.map(comp => {
                     let changeMultiplier = 1 + randomRange(-comp.volatility, comp.volatility);
                     
+                    // ✨ [Feature 2] 작전 세력 펌프/덤프 적용
+                    if (state.rugPullTarget && state.rugPullTarget.companyId === comp.id) {
+                        if (state.rugPullTarget.phase === 'pump') {
+                            changeMultiplier += randomRange(0.05, 0.10);
+                            state.rugPullTarget.ticksLeft -= 1;
+                            if (state.rugPullTarget.ticksLeft <= 0) {
+                                state.rugPullTarget.phase = 'dump';
+                            }
+                        } else if (state.rugPullTarget.phase === 'dump') {
+                            changeMultiplier -= 0.60; 
+                            addNotification(`😱 [작전 세력 이탈] 켈모리안 작전 세력이 차익을 실현하고 도망쳤습니다! 개미들 대성통곡!`, 'error');
+                            state.rugPullTarget = null;
+                        }
+                    }
+
                     state.activeImpacts.forEach(active => {
                         let match = false;
                         let impactTick = 0;
@@ -1510,11 +1543,25 @@
                     });
 
                     let newPrice = comp.price === 0 ? 0 : Math.floor(comp.price * changeMultiplier);
-                    if (newPrice > 0 && newPrice < 100) newPrice = 50; 
+                    if (newPrice > 0 && newPrice < 50) newPrice = 50; // 하한선 보정
                     
                     let newHistory = [...comp.history.slice(1), newPrice];
 
-                    // ✨ [Feature 1] 주식 액면분할 (Stock Split) 시스템
+                    // ✨ [Feature 1] 서킷 브레이커 감지 및 타이머 제어
+                    if (comp.haltTimer && comp.haltTimer > 0) {
+                        comp.haltTimer -= 1;
+                    }
+                    if (newHistory.length >= 10) {
+                        const pastPrice = newHistory[newHistory.length - 10];
+                        if (pastPrice > 0 && Math.abs(newPrice - pastPrice) / pastPrice >= 0.4) {
+                            if (!comp.haltTimer || comp.haltTimer <= 0) {
+                                comp.haltTimer = 25; 
+                                addNotification(`🚨 [투자 경고] 자치령 금감원에서 ${comp.name}의 비정상적 변동을 감지하여 5초간 거래를 정지합니다!`, 'error');
+                            }
+                        }
+                    }
+
+                    // 주식 액면분할 (Stock Split) 시스템
                     if (newPrice >= 100000) {
                         newPrice = Math.floor(newPrice / 10);
                         comp.prevPrice = Math.floor(comp.prevPrice / 10);
@@ -1541,42 +1588,99 @@
                 const bankruptCompanies = state.companies.filter(c => c.price > 0 && c.price <= 50 && Math.random() < 0.06);
                 const allToDelist = [...specialDelisted, ...bankruptCompanies];
 
+                let shortSqueezeGameOver = false;
+
                 if (allToDelist.length > 0) {
                     allToDelist.forEach(bc => {
-                        const reason = DELIST_REASONS[Math.floor(Math.random() * DELIST_REASONS.length)];
-                        addNotification(`[${bc.name}] ${reason} 상장폐지!`, 'error');
                         
-                        const holding = state.portfolio[bc.id]?.quantity || 0;
-                        if (holding < 0) {
-                            addNotification(`📉 [공매도 대박] ${bc.name} 상장폐지로 부채 전액 탕감!`, 'success');
-                        }
+                        // ✨ [Feature 3] 적대적 M&A 분기 (특수 상폐 제외, 파산 직전일 때 20% 확률)
+                        if (bc.price > 0 && Math.random() < 0.20) {
+                            const jumpMultiplier = randomRange(4.0, 6.0); // +300% ~ +500%
+                            const finalPrice = Math.floor(bc.price * jumpMultiplier);
+                            const holding = state.portfolio[bc.id]?.quantity || 0;
+                            
+                            if (holding !== 0) {
+                                if (holding > 0) {
+                                    const { totalAmount } = calculateExecution('sell', finalPrice, holding);
+                                    state.cash += totalAmount;
+                                } else if (holding < 0) {
+                                    const { totalAmount } = calculateExecution('buy', finalPrice, Math.abs(holding));
+                                    state.cash -= totalAmount;
+                                }
+                            }
 
-                        delete state.portfolio[bc.id];
-                        
-                        if(state.activeQuest && state.activeQuest.companyId === bc.id) {
-                             state.activeQuest = null;
-                             state.questCooldown = Math.floor(randomRange(60, 90));
-                             const questBanner = document.getElementById('quest-banner');
-                             if(questBanner) {
-                                 questBanner.classList.remove('translate-y-0');
-                                 questBanner.classList.add('-translate-y-[200%]');
-                             }
-                        }
+                            // 숏 스퀴즈 파산 검사
+                            let currentTotalAsset = state.cash;
+                            Object.entries(state.portfolio).forEach(([id, data]) => {
+                                if (id !== bc.id) { 
+                                    const comp = state.companies.find(c => c.id === id);
+                                    if (comp) currentTotalAsset += comp.price * data.quantity;
+                                }
+                            });
 
-                        // ✨ [Feature 3] 상장폐지 연쇄 재앙/호재 (Black Swan)
-                        if (bc.sector === '저그') {
-                            state.activeImpacts.push({ type: 'SECTOR', sector: '저그', ticks: 1, impactPerTick: 0.15 / 1.8 }); 
-                            addNotification(`💥 [저그 크립 과영양] 파산한 기업이 크립 위에서 부패하면서, 다른 저그 기업들이 잉여 영양을 흡수해 성장합니다! (+15%)`, 'success');
-                        } else if (bc.sector === '프로토스') {
-                            state.activeImpacts.push({ type: 'SECTOR', sector: '프로토스', ticks: 1, impactPerTick: -0.10 / 0.5 });
-                            addNotification(`✨ [에너지 충격] 파산한 기업의 사이오닉 에너지가 요동치며 다른 프로토스 기업들도 타격을 입습니다! (-10%)`, 'error');
-                        } else if (bc.sector === '테란') {
-                            state.activeImpacts.push({ type: 'SECTOR', sector: '테란', ticks: 1, impactPerTick: -0.05 });
-                            addNotification(`📉 [테란 뱅크런] 파산 충격으로 테란 금융계에 연쇄 부도 공포가 퍼집니다! (-5%)`, 'error');
-                        }
+                            if (holding < 0 && currentTotalAsset < 0) {
+                                state.status = 'LOSE';
+                                showOverlay('🚨 숏 스퀴즈 파산 (특수 패배)', `공매도 친 [${bc.name}]이(가) 대기업에 인수합병되며 주가가 폭등했습니다!\n부채가 순식간에 복사되어 파산했습니다.\n코프룰루 역사상 최악의 공매도 실패입니다...`, 'text-red-500', '1회차로 돌아가기');
+                                shortSqueezeGameOver = true;
+                            } else {
+                                addNotification(`🎉 [적대적 M&A 대박!] ${bc.name}이 우량 기업에 전격 인수되었습니다! 주주들에게 위로금이 지급되며 상장 폐지됩니다!`, 'success');
+                            }
+                            
+                            delete state.portfolio[bc.id];
+                            
+                            if(state.activeQuest && state.activeQuest.companyId === bc.id) {
+                                 state.activeQuest = null;
+                                 state.questCooldown = Math.floor(randomRange(60, 90));
+                                 const questBanner = document.getElementById('quest-banner');
+                                 if(questBanner) {
+                                     questBanner.classList.remove('translate-y-0');
+                                     questBanner.classList.add('-translate-y-[200%]');
+                                 }
+                            }
+                        } else {
+                            // 일반 파산
+                            const reason = DELIST_REASONS[Math.floor(Math.random() * DELIST_REASONS.length)];
+                            addNotification(`[${bc.name}] ${reason} 상장폐지!`, 'error');
+                            
+                            const holding = state.portfolio[bc.id]?.quantity || 0;
+                            if (holding < 0) {
+                                addNotification(`📉 [공매도 대박] ${bc.name} 상장폐지로 부채 전액 탕감!`, 'success');
+                            }
 
+                            delete state.portfolio[bc.id];
+                            
+                            if(state.activeQuest && state.activeQuest.companyId === bc.id) {
+                                 state.activeQuest = null;
+                                 state.questCooldown = Math.floor(randomRange(60, 90));
+                                 const questBanner = document.getElementById('quest-banner');
+                                 if(questBanner) {
+                                     questBanner.classList.remove('translate-y-0');
+                                     questBanner.classList.add('-translate-y-[200%]');
+                                 }
+                            }
+
+                            // 상장폐지 연쇄 재앙/호재 (Black Swan)
+                            if (bc.sector === '저그') {
+                                state.activeImpacts.push({ type: 'SECTOR', sector: '저그', ticks: 1, impactPerTick: 0.15 / 1.8 }); 
+                                addNotification(`🧬 [저그 크립 과영양] 파산한 기업이 크립 위에서 부패하면서, 다른 저그 기업들이 잉여 영양을 흡수해 성장합니다! (+15%)`, 'success');
+                            } else if (bc.sector === '프로토스') {
+                                state.activeImpacts.push({ type: 'SECTOR', sector: '프로토스', ticks: 1, impactPerTick: -0.10 / 0.5 });
+                                addNotification(`✨ [에너지 충격] 파산한 기업의 사이오닉 에너지가 요동치며 다른 프로토스 기업들도 타격을 입습니다! (-10%)`, 'error');
+                            } else if (bc.sector === '테란') {
+                                state.activeImpacts.push({ type: 'SECTOR', sector: '테란', ticks: 1, impactPerTick: -0.05 });
+                                addNotification(`📉 [테란 뱅크런] 파산 충격으로 테란 금융계에 연쇄 부도 공포가 퍼집니다! (-5%)`, 'error');
+                            }
+                        }
                     });
+                    
                     state.companies = state.companies.filter(c => !allToDelist.includes(c));
+                }
+
+                // 숏 스퀴즈 발생 시 즉시 루프 중단
+                if (shortSqueezeGameOver) {
+                    clearInterval(gameInterval);
+                    clearInterval(timerInterval);
+                    return; 
                 }
 
                 if (shouldAddNew && state.companies.length < 15) { 
@@ -1614,7 +1718,7 @@
             }, 200);
         }
 
-        // --- 승패 및 🚨 마진콜 로직 ---
+        // --- 승패 및 마진콜 로직 ---
         function checkWinLoss() {
             let stockValue = 0;
             Object.entries(state.portfolio).forEach(([id, data]) => {
@@ -1716,6 +1820,7 @@
                 scheduledSpecialEvent: null,
                 pendingEvents: { addNew: false },
                 
+                rugPullTarget: null,
                 activeQuest: null,
                 questCooldown: 60,
                 
