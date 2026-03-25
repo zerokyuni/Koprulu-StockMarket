@@ -82,7 +82,7 @@
                     <span id="cash-display" class="text-[11px] lg:text-base font-bold text-white">0</span>
                 </div>
                 <div class="flex flex-col items-end">
-                    <span class="text-[9px] lg:text-xs text-slate-400">총 자산</span>
+                    <span id="total-asset-label" class="text-[9px] lg:text-xs text-slate-400">총 자산</span>
                     <span id="total-asset-display" class="text-[11px] lg:text-base font-bold text-indigo-300">0</span>
                 </div>
             </div>
@@ -101,7 +101,6 @@
                     <span id="loan-due" class="font-black text-white">0</span>
                 </div>
 
-                <!-- ✨ 사채 즉시 상환 버튼 추가 -->
                 <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                     <button id="loan-repay-btn" onclick="repayLoanEarly()" class="px-3 py-0.5 lg:py-1 bg-red-600 hover:bg-red-50 active:bg-red-700 rounded text-[9px] lg:text-xs font-black text-white shadow-[0_0_10px_rgba(220,38,38,0.5)] border border-red-400 transition-colors disabled:opacity-50 disabled:grayscale cursor-pointer disabled:cursor-not-allowed">즉시 상환</button>
                 </div>
@@ -119,7 +118,7 @@
             <div class="relative z-10 w-full h-full flex justify-between items-center px-2 lg:px-4 py-1">
                 <div class="flex items-center gap-1.5 text-[10px] lg:text-sm text-blue-200 truncate shrink-0">
                     <span class="font-black text-blue-400">🏆 승리까지:</span>
-                    <span id="victory-remain" class="font-bold text-white">0</span>
+                    <span id="victory-remain" class="font-bold text-white whitespace-nowrap">0</span>
                 </div>
                 <div class="flex items-center gap-1 text-[9px] lg:text-sm text-blue-300/80 shrink-0 ml-2">
                     <span class="hidden sm:inline">현재 자산: </span><span id="victory-current" class="text-white font-black">0</span>
@@ -278,7 +277,6 @@
         };
 
         const NEWS_POOL = [
-            // ✨ [거시 경제 (GLOBAL)]
             { type: 'GLOBAL', impact: [-0.4, -0.2], text: "우주 자원 고갈 위기 선언! 전 행성 미네랄 채취 비용 증가로 우주 증시 대폭락!" },
             { type: 'GLOBAL', impact: [0.3, 0.6], text: "미지의 행성에서 젤나가 유물 대거 발견! 코프룰루 구역 전체에 막대한 자본 유입!" },
             { type: 'GLOBAL', impact: [-0.5, -0.3], text: "아몬의 그림자 재관측... 은하계 전역에 공포 확산되며 주식 시장 패닉 셀링!" },
@@ -292,7 +290,6 @@
             { type: 'GLOBAL', impact: [-0.5, -0.2], text: "우주 해적 '미라 한' 용병단, 주요 무역로 점거. 물류비 폭등으로 전 종목 수익성 악화!" },
             { type: 'GLOBAL', impact: [0.3, 0.5], text: "초거대 젤나가 사원 가동... 은하계 전체에 기분 좋은 사이오닉 에너지가 퍼지며 투심 회복!" },
 
-            // ✨ [개별 특보 (COMPANY)]
             { type: 'COMPANY', impact: [0.8, 1.5], text: "{COMPANY_NAME}, 은하계 판도를 바꿀 혁신적 신기술 발표! 주가 수직 상승!" },
             { type: 'COMPANY', impact: [-0.8, -0.5], text: "{COMPANY_NAME} 대표, 켈모리안 사채업자에게 쫓겨 야반도주! 주가 대폭락!" },
             { type: 'COMPANY', impact: [1.0, 2.0], text: "{COMPANY_NAME} 본사 지하에서 무한 미네랄 광맥 발견! 주주들 돈방석!" },
@@ -306,7 +303,6 @@
             { type: 'COMPANY', impact: [-0.8, -0.5], text: "{COMPANY_NAME} 공장 라인에 정체불명의 크립 번식... 생산 전면 중단 사태!" },
             { type: 'COMPANY', impact: [0.8, 1.5], text: "{COMPANY_NAME}, 자치령 황제 멩스크의 비밀 펀드 자금 대거 유입 확인! 매수 폭주!" },
 
-            // ✨ [노이즈 (NOISE)]
             { type: 'NOISE', text: "테란 자치령, '오늘 저녁 메뉴는 뽀글이' 중대 발표... 시민들 환호" },
             { type: 'NOISE', text: "어느 마린, 스팀팩 잘못 맞고 3박 4일째 마라톤 중... 기네스북 등재 조짐" },
             { type: 'NOISE', text: "프로브, 일하기 싫어 파일런 뒤에 숨었다가 넥서스 AI에게 발각" },
@@ -338,7 +334,6 @@
             { type: 'NOISE', text: "스포어 콜로니, 봄철 꽃가루 알레르기 유발 주범으로 지목돼 대규모 벌목 위기" },
             { type: 'NOISE', text: "파이어뱃 부대, 전투 중 삼겹살 구워 먹다 적발" },
 
-            // ✨ [테란 (TERRAN)]
             { type: 'SECTOR', sector: '테란', impact: [0.15, 0.35], text: "[단독] SCV토건, 미네랄 채취 속도 200% 증가하는 혁신 다이아 드릴 개발!" },
             { type: 'SECTOR', sector: '테란', impact: [0.20, 0.40], text: "[속보] 시즈정밀, 사거리 3배 늘어난 '슈퍼 울트라 시즈모드 엔진' 상용화 성공" },
             { type: 'SECTOR', sector: '테란', impact: [0.20, 0.45], text: "[속보] 배틀엔지니어, 야마토 포 발사 대기시간 0.5초로 단축하는 신기술 발표!" },
@@ -361,7 +356,6 @@
             { type: 'SECTOR', sector: '테란', impact: [-0.35, -0.15], text: "고스트전자, 핵폭탄 가방 비밀번호 분실 사태... 자치령 보안부 발칵" },
             { type: 'SECTOR', sector: '테란', impact: [0.25, 0.45], text: "[속보] 메딕제약, 스팀팩 부작용 제로인 '꿀물 팩' 상용화 성공! 마린 생존율 급증" },
 
-            // ✨ [저그 (ZERG)]
             { type: 'SECTOR', sector: '저그', impact: [0.20, 0.40], text: "[속보] 퀸메디, 브루들링 부작용 없는 '완벽한 기생충 다이어트약' 글로벌 히트!" },
             { type: 'SECTOR', sector: '저그', impact: [0.15, 0.35], text: "해처리세포, 라바 생성 속도 5배 폭증하는 초영양 크립 앰플 대량 생산" },
             { type: 'SECTOR', sector: '저그', impact: [0.25, 0.45], text: "[속보] 저글링생명, 발업을 넘어선 '비행 저글링' 유전자 조작 성공! 생태계 파괴" },
@@ -384,7 +378,6 @@
             { type: 'SECTOR', sector: '저그', impact: [-0.35, -0.20], text: "퀸메디, 브루들링 기술이 테란의 백신에 막혀 무용지물 전락... 영업 이익 반토막" },
             { type: 'SECTOR', sector: '저그', impact: [0.30, 0.50], text: "[속보] 울트라제약, 카이저 칼날을 티타늄으로 강화하는 특수 효소 개발! 테란 장갑 썰어버려" },
 
-            // ✨ [프로토스 (PROTOSS)]
             { type: 'SECTOR', sector: '프로토스', impact: [0.20, 0.50], text: "[속보] 커세어웹, 웹스 터지는 속도로 데이터 전송하는 6G '웹망' 기술 시연 성공!" },
             { type: 'SECTOR', sector: '프로토스', impact: [0.15, 0.35], text: "아비터클라우드, 은폐 필드 기반의 완벽한 해킹 방어 클라우드 출시해 업계 발칵" },
             { type: 'SECTOR', sector: '프로토스', impact: [0.20, 0.45], text: "[속보] 프로브AI, 미네랄 덩어리 자체를 텔레포트 시키는 넥서스 연동 기술 공개!" },
@@ -494,9 +487,36 @@
                 history: Array(MAX_HISTORY).fill(price),
                 volatility: vol,
                 haltTimer: 0,
-                haltCooldown: 0 // ✨ [Feature 1] 서킷 브레이커 연속 발동 방지 쿨타임
+                haltCooldown: 0 // ✨ 서킷 브레이커 연속 발동 방지 쿨타임 추가
             };
         };
+
+        function generateMiniChartSVG(history, isUp) {
+            if (!history || history.length === 0) return '';
+            let min = Math.min(...history);
+            let max = Math.max(...history);
+            if (min === max) { min -= 1; max += 1; }
+            const range = max - min;
+            const width = 100;
+            const height = 40;
+
+            const points = history.map((val, i) => {
+                const x = (i / (history.length - 1)) * width;
+                const y = height - ((val - min) / range) * height;
+                return `${x},${y}`;
+            }).join(' ');
+
+            const strokeColor = isUp ? '#ef4444' : '#3b82f6';
+            const fillColor = isUp ? 'rgba(239,68,68,0.1)' : 'rgba(59,130,246,0.1)';
+            const areaPoints = `${points} ${width},${height} 0,${height}`;
+
+            return `
+                <svg class="absolute inset-0 w-full h-full opacity-40 blur-[1px] pointer-events-none" preserveAspectRatio="none" viewBox="0 0 ${width} ${height}">
+                    <polygon fill="${fillColor}" points="${areaPoints}"></polygon>
+                    <polyline fill="none" stroke="${strokeColor}" stroke-width="1.5" stroke-linejoin="round" points="${points}"></polyline>
+                </svg>
+            `;
+        }
 
         function initCompaniesDOM() {
             const html = SECTORS.map(sector => `
@@ -504,7 +524,7 @@
                     <div class="p-1 lg:p-2 text-center font-black text-[10px] lg:text-base leading-tight border-b border-slate-700/50 bg-slate-800/80 shadow-sm shrink-0" style="color: ${SECTOR_COLORS[sector]}">
                         ${SECTOR_LABELS[sector]}
                     </div>
-                    <div id="sector-list-${sector}" class="flex-1 overflow-y-auto custom-scrollbar p-1 lg:p-2 flex flex-col gap-1 lg:gap-2 pb-8" onscroll="stopAction(event)">
+                    <div id="sector-list-${sector}" class="flex-1 overflow-y-auto custom-scrollbar p-1 lg:p-2 flex flex-col gap-1 lg:gap-2 pb-40" onscroll="stopAction(event)">
                         <!-- 카드가 들어갈 자리 -->
                     </div>
                 </div>
@@ -617,7 +637,16 @@
                 victoryProgressFill.style.width = `${progressPercent}%`;
                 
                 const remaining = Math.max(currentLevelData.goal - totalAsset, 0);
-                victoryRemain.innerText = `${formatMoney(remaining)} 남음`;
+                const hasShortPosition = Object.values(state.portfolio).some(p => p.quantity < 0);
+
+                if (totalAsset >= currentLevelData.goal && !hasShortPosition) {
+                    victoryRemain.innerHTML = `<span class="text-green-400">✨ 모든 조건 충족! 승리 판정 대기 중...</span>`;
+                } else if (hasShortPosition) {
+                    victoryRemain.innerHTML = `${formatMoney(remaining)} 남음 <span class="text-yellow-400 animate-pulse ml-1 text-[8px] sm:text-[10px]">⚠️ 모든 공매도 청산 필요</span>`;
+                } else {
+                    victoryRemain.innerHTML = `${formatMoney(remaining)} 남음`;
+                }
+
                 victoryCurrent.innerText = formatMoney(totalAsset);
                 victoryGoalText.innerHTML = `목표: <span class="text-blue-400 font-bold">${formatMoney(currentLevelData.goal)}</span>`;
             }
@@ -804,26 +833,32 @@
                     const list = document.getElementById(`sector-list-${company.sector}`);
                     if (!list) return;
 
+                    // ✨ shrink-0 유지
                     const cardHtml = `
-                        <div id="card-${company.id}" data-id="${company.id}" class="company-card bg-slate-800 rounded lg:rounded-lg border border-slate-700 p-1 lg:p-2 flex flex-col shadow-sm transition-all duration-300 ${questRingClass}">
-                            <div id="title-${company.id}" class="font-bold text-white text-[9px] lg:text-sm w-full ${titleClass}" title="${company.name}" ${titleAction}>${company.name}${questText}${haltText}</div>
-                            <div class="mt-0.5 lg:mt-1 flex flex-col lg:flex-row lg:justify-between lg:items-end">
-                                <span id="price-${company.id}" class="font-bold text-[10px] lg:text-sm ${getColorClass(diff)}">${formatMoney(company.price)}</span>
-                                <span id="diff-${company.id}" class="text-[8px] lg:text-xs font-medium ${getColorClass(diff)}">
-                                    ${diff > 0 ? '▲' : (diff < 0 ? '▼' : '-')} ${diffPercent.toFixed(1)}%
-                                </span>
+                        <div id="card-${company.id}" data-id="${company.id}" class="shrink-0 company-card relative bg-slate-800 rounded lg:rounded-lg border border-slate-700 p-1 lg:p-2 flex flex-col shadow-sm transition-all duration-300 ${questRingClass} overflow-hidden">
+                            <div id="bg-chart-${company.id}" class="absolute inset-0 z-0 pointer-events-none">
+                                ${generateMiniChartSVG(company.history, diff >= 0)}
                             </div>
-                            <div id="holding-container-${company.id}" class="${holding !== 0 ? 'visible' : 'invisible'} flex mt-1 lg:mt-2 bg-slate-900 rounded p-1 lg:p-1.5 justify-between items-center border border-slate-700">
-                                <span id="holding-qty-${company.id}" class="text-[8px] lg:text-xs font-bold text-slate-200">${holding}주</span>
-                                <span id="holding-rate-${company.id}" class="text-[8px] lg:text-xs font-bold ${getColorClass(returnRate)}">
-                                    ${returnRate > 0 ? '+' : ''}${returnRate.toFixed(1)}%
-                                </span>
-                            </div>
-                            <div class="grid grid-cols-2 gap-1 lg:gap-2 mt-1 lg:mt-2">
-                                <button id="buy-btn-${company.id}" oncontextmenu="return false;" onmousedown="startAction('buy', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('buy', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchmove="stopAction(event)" ontouchcancel="stopAction(event)" ${(!canBuy || isHalted) ? 'disabled' : ''} class="bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white active:bg-red-600 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-red-500/30 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">매수</button>
-                                <button id="sell-btn-${company.id}" oncontextmenu="return false;" onmousedown="startAction('sell', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('sell', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchmove="stopAction(event)" ontouchcancel="stopAction(event)" ${(!canSell || isHalted) ? 'disabled' : ''} class="bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white active:bg-blue-600 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-500/30 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">매도</button>
-                                <button id="buy-all-btn-${company.id}" onclick="buyAll('${company.id}')" ${(!canBuy && !isShort) || isHalted ? 'disabled' : ''} class="bg-red-900/40 text-red-300 hover:bg-red-600 hover:text-white active:bg-red-700 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-red-700/50 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">${buyAllText}</button>
-                                <button id="sell-all-btn-${company.id}" onclick="sellAll('${company.id}')" ${!canSellAll || isHalted ? 'disabled' : ''} class="bg-blue-900/40 text-blue-300 hover:bg-blue-600 hover:text-white active:bg-blue-700 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-700/50 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">전량매도</button>
+                            <div class="relative z-10 flex flex-col w-full h-full">
+                                <div id="title-${company.id}" class="font-bold text-white text-[9px] lg:text-sm w-full ${titleClass}" title="${company.name}" ${titleAction}>${company.name}${questText}${haltText}</div>
+                                <div class="mt-0.5 lg:mt-1 flex flex-col lg:flex-row lg:justify-between lg:items-end">
+                                    <span id="price-${company.id}" class="font-bold text-[10px] lg:text-sm ${getColorClass(diff)}">${formatMoney(company.price)}</span>
+                                    <span id="diff-${company.id}" class="text-[8px] lg:text-xs font-medium ${getColorClass(diff)}">
+                                        ${diff > 0 ? '▲' : (diff < 0 ? '▼' : '-')} ${diffPercent.toFixed(1)}%
+                                    </span>
+                                </div>
+                                <div id="holding-container-${company.id}" class="${holding !== 0 ? 'visible' : 'invisible'} flex mt-1 lg:mt-2 bg-slate-900 rounded p-1 lg:p-1.5 justify-between items-center border border-slate-700">
+                                    <span id="holding-qty-${company.id}" class="text-[8px] lg:text-xs font-bold text-slate-200">${holding}주</span>
+                                    <span id="holding-rate-${company.id}" class="text-[8px] lg:text-xs font-bold ${getColorClass(returnRate)}">
+                                        ${returnRate > 0 ? '+' : ''}${returnRate.toFixed(1)}%
+                                    </span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-1 lg:gap-2 mt-1 lg:mt-2">
+                                    <button id="buy-btn-${company.id}" oncontextmenu="return false;" onmousedown="startAction('buy', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('buy', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchmove="stopAction(event)" ontouchcancel="stopAction(event)" ${(!canBuy || isHalted) ? 'disabled' : ''} class="bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white active:bg-red-600 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-red-500/30 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">매수</button>
+                                    <button id="sell-btn-${company.id}" oncontextmenu="return false;" onmousedown="startAction('sell', '${company.id}', 1, event)" onmouseup="stopAction(event)" onmouseleave="stopAction(event)" ontouchstart="startAction('sell', '${company.id}', 1, event)" ontouchend="stopAction(event)" ontouchmove="stopAction(event)" ontouchcancel="stopAction(event)" ${(!canSell || isHalted) ? 'disabled' : ''} class="bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white active:bg-blue-600 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-500/30 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">매도</button>
+                                    <button id="buy-all-btn-${company.id}" onclick="buyAll('${company.id}')" ${(!canBuy && !isShort) || isHalted ? 'disabled' : ''} class="bg-red-900/40 text-red-300 hover:bg-red-600 hover:text-white active:bg-red-700 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-red-700/50 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">${buyAllText}</button>
+                                    <button id="sell-all-btn-${company.id}" onclick="sellAll('${company.id}')" ${!canSellAll || isHalted ? 'disabled' : ''} class="bg-blue-900/40 text-blue-300 hover:bg-blue-600 hover:text-white active:bg-blue-700 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-700/50 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">전량매도</button>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -832,6 +867,9 @@
                     if(isQuestTarget) card.classList.add('ring-2', 'ring-yellow-400', 'animate-pulse');
                     else card.classList.remove('ring-2', 'ring-yellow-400', 'animate-pulse');
                     
+                    const bgChartEl = document.getElementById(`bg-chart-${company.id}`);
+                    if (bgChartEl) bgChartEl.innerHTML = generateMiniChartSVG(company.history, diff >= 0);
+
                     const titleEl = document.getElementById(`title-${company.id}`);
                     if (titleEl) {
                         titleEl.innerHTML = `${company.name}${questText}${haltText}`;
@@ -922,7 +960,6 @@
             let success = false;
             let slippageRate = 0;
             const comp = state.companies.find(c => c.id === id);
-            // 🚨 서킷 브레이커 방어 로직
             if (!comp || (comp.haltTimer && comp.haltTimer > 0)) return false;
 
             if (action === 'buy') {
@@ -992,7 +1029,6 @@
         window.buyAll = (id) => {
             if (state.status !== 'PLAYING') return;
             const comp = state.companies.find(c => c.id === id);
-            // 🚨 서킷 브레이커 방어 로직
             if (!comp || (comp.haltTimer && comp.haltTimer > 0)) return;
 
             const holding = state.portfolio[id]?.quantity || 0;
@@ -1032,7 +1068,6 @@
             const holding = state.portfolio[id]?.quantity || 0;
             const comp = state.companies.find(c => c.id === id);
             
-            // 🚨 서킷 브레이커 방어 로직
             if (holding > 0 && comp && (!comp.haltTimer || comp.haltTimer <= 0)) {
                 const { slippageRate } = calculateExecution('sell', comp.price, holding);
                 window.executeTrade('sell', id, holding, 0, true); 
@@ -1137,7 +1172,6 @@
                     const comp = state.companies.find(c => c.id === id);
                     if (comp) {
                         const qty = state.portfolio[id].quantity;
-                        // 🚨 사채업자의 강제 청산은 서킷 브레이커(haltTimer)를 무시하고 징수함
                         if (qty > 0) {
                             const penaltyPrice = Math.floor(comp.price * randomRange(0.85, 0.90)); 
                             const { totalAmount } = calculateExecution('sell', penaltyPrice, qty);
@@ -1204,7 +1238,6 @@
                     }
                 }
 
-                // 블록딜 퀘스트 시스템 타이머 및 배너 업데이트
                 if (state.status === 'PLAYING') {
                     const questBanner = document.getElementById('quest-banner');
                     
@@ -1491,7 +1524,7 @@
                             }
                         } else if (state.rugPullTarget.phase === 'dump') {
                             changeMultiplier -= 0.60; 
-                            addNotification(`😱 [작전 세력 이탈] 켈모리안 작전 세력이 차익을 실현하고 도망쳤습니다! 개미들 대성통곡!`, 'error');
+                            addNotification(`😱 [작전 세력 이탈] ${comp.name}에 붙었던 작전 세력이 차익을 실현하고 도망쳤습니다! 개미들 대성통곡!`, 'error');
                             state.rugPullTarget = null;
                         }
                     }
@@ -1543,7 +1576,7 @@
                     
                     let newHistory = [...comp.history.slice(1), newPrice];
 
-                    // ✨ [Feature 1] 서킷 브레이커 감지 및 쿨타임 제어
+                    // ✨ [Feature 1] 서킷 브레이커 감지 (밸런스 패치 적용: 15틱, 70% 초과, 500 미네랄 이상)
                     if (comp.haltTimer && comp.haltTimer > 0) {
                         comp.haltTimer -= 1;
                     }
@@ -1729,7 +1762,9 @@
                 return;
             }
 
-            if (state.loan === 0 && totalAsset >= currentLevelData.goal) {
+            const hasShortPosition = Object.values(state.portfolio).some(p => p.quantity < 0);
+
+            if (state.loan === 0 && totalAsset >= currentLevelData.goal && !hasShortPosition && state.status === 'PLAYING') {
                 state.status = 'WIN';
                 if (state.level < LEVEL_DATA.length) {
                     const nextLv = LEVEL_DATA[state.level];
