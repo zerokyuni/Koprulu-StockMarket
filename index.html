@@ -29,6 +29,33 @@
         .animate-fast-blink {
             animation: fastBlink 0.25s infinite;
         }
+        
+        /* ✨ [신규] 상장폐지(파산) 애니메이션 */
+        @keyframes shakeAndFall {
+            0% { transform: translateX(0) rotate(0); }
+            10%, 30%, 50%, 70% { transform: translateX(-5px) rotate(-3deg); filter: grayscale(0.2); }
+            20%, 40%, 60% { transform: translateX(5px) rotate(3deg); }
+            80% { transform: translateY(0) rotate(0); opacity: 1; filter: grayscale(0.5); }
+            100% { transform: translateY(200px) rotate(15deg); opacity: 0; filter: grayscale(1); }
+        }
+        .animate-shake-fall {
+            animation: shakeAndFall 1.6s forwards ease-in-out;
+            z-index: 50;
+        }
+
+        /* ✨ [신규] 상장폐지(M&A 대박) 애니메이션 */
+        @keyframes popExplode {
+            0% { transform: scale(1); opacity: 1; }
+            20% { transform: scale(1.05); opacity: 1; filter: brightness(1.2); }
+            40% { transform: scale(0.95); opacity: 1; filter: brightness(1.5); }
+            60% { transform: scale(1.1); opacity: 0.8; filter: brightness(2); }
+            100% { transform: scale(0); opacity: 0; filter: brightness(3); }
+        }
+        .animate-pop-explode {
+            animation: popExplode 1.6s forwards ease-in-out;
+            z-index: 50;
+        }
+
         .hide-scrollbar::-webkit-scrollbar {
             display: none;
         }
@@ -78,11 +105,11 @@
             </h1>
             <div class="text-right flex gap-3 lg:gap-6">
                 <div class="flex flex-col items-end">
-                    <span class="text-[9px] lg:text-xs text-slate-400">보유 미네랄(현금)</span>
+                    <span class="text-[9px] lg:text-xs text-slate-400">보유 현금</span>
                     <span id="cash-display" class="text-[11px] lg:text-base font-bold text-white">0</span>
                 </div>
                 <div class="flex flex-col items-end">
-                    <span id="total-asset-label" class="text-[9px] lg:text-xs text-slate-400">총 자산</span>
+                    <span id="total-asset-label" class="text-[9px] lg:text-xs text-slate-400">순자산</span>
                     <span id="total-asset-display" class="text-[11px] lg:text-base font-bold text-indigo-300">0</span>
                 </div>
             </div>
@@ -121,7 +148,7 @@
                     <span id="victory-remain" class="font-bold text-white whitespace-nowrap">0</span>
                 </div>
                 <div class="flex items-center gap-1 text-[9px] lg:text-sm text-blue-300/80 shrink-0 ml-2">
-                    <span class="hidden sm:inline">현재 자산: </span><span id="victory-current" class="text-white font-black">0</span>
+                    <span class="hidden sm:inline">현재 현금: </span><span id="victory-current" class="text-white font-black">0</span>
                     <span id="victory-goal-text" class="border-l border-blue-800/50 pl-1 ml-1">목표: <span class="text-blue-400 font-bold">3,000,000</span></span>
                 </div>
             </div>
@@ -182,7 +209,7 @@
                 <div class="flex flex-col gap-2">
                     <div class="flex items-center gap-3 bg-slate-900/60 p-2.5 rounded-lg border border-yellow-500/30">
                         <span class="text-yellow-400 font-black text-sm sm:text-base shrink-0">🏆 승리:</span>
-                        <span id="start-overlay-goal" class="text-white text-xs sm:text-sm font-bold">사채 전액 상환 및 총 자산 5,000,000 돌파</span>
+                        <span id="start-overlay-goal" class="text-white text-xs sm:text-sm font-bold">사채 전액 상환 및 현금 5,000,000 돌파</span>
                     </div>
                     <div class="flex items-center gap-3 bg-slate-900/60 p-2.5 rounded-lg border border-red-500/30">
                         <span class="text-red-500 font-black text-sm sm:text-base shrink-0">☠️ 패배:</span>
@@ -419,6 +446,7 @@
             pendingEvents: { addNew: false },
             
             rugPullTarget: null,
+            pendingShortSqueezeLoss: null, // ✨ 숏 스퀴즈 파산 지연 변수
             
             terranDividendTimer: 10,
             activeQuest: null,
@@ -487,7 +515,7 @@
                 history: Array(MAX_HISTORY).fill(price),
                 volatility: vol,
                 haltTimer: 0,
-                haltCooldown: 0 // ✨ 서킷 브레이커 연속 발동 방지 쿨타임 추가
+                haltCooldown: 0
             };
         };
 
@@ -524,7 +552,7 @@
                     <div class="p-1 lg:p-2 text-center font-black text-[10px] lg:text-base leading-tight border-b border-slate-700/50 bg-slate-800/80 shadow-sm shrink-0" style="color: ${SECTOR_COLORS[sector]}">
                         ${SECTOR_LABELS[sector]}
                     </div>
-                    <div id="sector-list-${sector}" class="flex-1 overflow-y-auto custom-scrollbar p-1 lg:p-2 flex flex-col gap-1 lg:gap-2 pb-40" onscroll="stopAction(event)">
+                    <div id="sector-list-${sector}" class="flex-1 overflow-y-auto custom-scrollbar p-1 lg:p-2 flex flex-col gap-1 lg:gap-2 pb-[80vh]" onscroll="stopAction(event)">
                         <!-- 카드가 들어갈 자리 -->
                     </div>
                 </div>
@@ -581,7 +609,23 @@
                 if (comp) stockValue += comp.price * data.quantity;
             });
             const totalAsset = state.cash + stockValue;
-            document.getElementById('total-asset-display').innerText = `${formatMoney(totalAsset)}`;
+
+            const totalAssetLabel = document.getElementById('total-asset-label');
+            const totalAssetDisplay = document.getElementById('total-asset-display');
+            if (state.level >= 2) {
+                totalAssetLabel.innerText = "순자산";
+                if (totalAsset < state.cash) {
+                    totalAssetDisplay.className = "text-[11px] lg:text-base font-bold text-red-400";
+                } else if (totalAsset > state.cash) {
+                    totalAssetDisplay.className = "text-[11px] lg:text-base font-bold text-blue-400";
+                } else {
+                    totalAssetDisplay.className = "text-[11px] lg:text-base font-bold text-indigo-300";
+                }
+            } else {
+                totalAssetLabel.innerText = "총 자산";
+                totalAssetDisplay.className = "text-[11px] lg:text-base font-bold text-indigo-300";
+            }
+            totalAssetDisplay.innerText = `${formatMoney(totalAsset)}`;
 
             const currentLevelData = LEVEL_DATA[state.level - 1];
             const loanBar = document.getElementById('loan-bar');
@@ -633,13 +677,14 @@
                 const victoryCurrent = document.getElementById('victory-current');
                 const victoryGoalText = document.getElementById('victory-goal-text');
 
-                const progressPercent = Math.min((totalAsset / currentLevelData.goal) * 100, 100);
+                // ✨ 승리 목표 진행바 현금 기준으로 수정
+                const progressPercent = Math.min((state.cash / currentLevelData.goal) * 100, 100);
                 victoryProgressFill.style.width = `${progressPercent}%`;
                 
-                const remaining = Math.max(currentLevelData.goal - totalAsset, 0);
+                const remaining = Math.max(currentLevelData.goal - state.cash, 0);
                 const hasShortPosition = Object.values(state.portfolio).some(p => p.quantity < 0);
 
-                if (totalAsset >= currentLevelData.goal && !hasShortPosition) {
+                if (state.cash >= currentLevelData.goal && !hasShortPosition) {
                     victoryRemain.innerHTML = `<span class="text-green-400">✨ 모든 조건 충족! 승리 판정 대기 중...</span>`;
                 } else if (hasShortPosition) {
                     victoryRemain.innerHTML = `${formatMoney(remaining)} 남음 <span class="text-yellow-400 animate-pulse ml-1 text-[8px] sm:text-[10px]">⚠️ 모든 공매도 청산 필요</span>`;
@@ -647,7 +692,7 @@
                     victoryRemain.innerHTML = `${formatMoney(remaining)} 남음`;
                 }
 
-                victoryCurrent.innerText = formatMoney(totalAsset);
+                victoryCurrent.innerText = formatMoney(state.cash);
                 victoryGoalText.innerHTML = `목표: <span class="text-blue-400 font-bold">${formatMoney(currentLevelData.goal)}</span>`;
             }
 
@@ -827,15 +872,29 @@
                 const titleClass = state.level >= 4 ? 'cursor-pointer hover:text-yellow-300 transition-colors' : '';
                 const titleAction = state.level >= 4 ? `onclick="manipulateMarket('${company.id}')"` : '';
 
+                // ✨ 상장폐지 연출 클래스 추가
+                const isBankrupt = company.delistType === 'BANKRUPT';
+                const isMNA = company.delistType === 'MNA';
+
+                let animClass = '';
+                let overlayHTML = '';
+
+                if (isBankrupt) {
+                    animClass = 'animate-shake-fall pointer-events-none opacity-90';
+                    overlayHTML = `<div class="absolute inset-0 flex items-center justify-center z-50 text-4xl sm:text-5xl opacity-80 font-black text-red-500 bg-red-950/60 uppercase rotate-[-15deg]">BANKRUPT</div>`;
+                } else if (isMNA) {
+                    animClass = 'animate-pop-explode pointer-events-none';
+                    overlayHTML = `<div class="absolute inset-0 flex items-center justify-center z-50 text-4xl sm:text-5xl animate-[bounce_0.5s_infinite]">🎉✨🎊</div>`;
+                }
+
                 let card = document.getElementById(`card-${company.id}`);
 
                 if (!card) {
                     const list = document.getElementById(`sector-list-${company.sector}`);
                     if (!list) return;
 
-                    // ✨ shrink-0 유지
                     const cardHtml = `
-                        <div id="card-${company.id}" data-id="${company.id}" class="shrink-0 company-card relative bg-slate-800 rounded lg:rounded-lg border border-slate-700 p-1 lg:p-2 flex flex-col shadow-sm transition-all duration-300 ${questRingClass} overflow-hidden">
+                        <div id="card-${company.id}" data-id="${company.id}" class="shrink-0 company-card relative bg-slate-800 rounded lg:rounded-lg border border-slate-700 p-1 lg:p-2 flex flex-col shadow-sm transition-all duration-300 ${questRingClass} overflow-hidden ${animClass}">
                             <div id="bg-chart-${company.id}" class="absolute inset-0 z-0 pointer-events-none">
                                 ${generateMiniChartSVG(company.history, diff >= 0)}
                             </div>
@@ -860,6 +919,7 @@
                                     <button id="sell-all-btn-${company.id}" onclick="sellAll('${company.id}')" ${!canSellAll || isHalted ? 'disabled' : ''} class="bg-blue-900/40 text-blue-300 hover:bg-blue-600 hover:text-white active:bg-blue-700 py-1.5 rounded text-[8px] lg:text-xs font-bold transition-colors border border-blue-700/50 select-none cursor-pointer disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed">전량매도</button>
                                 </div>
                             </div>
+                            ${overlayHTML}
                         </div>
                     `;
                     list.insertAdjacentHTML('beforeend', cardHtml);
@@ -867,6 +927,15 @@
                     if(isQuestTarget) card.classList.add('ring-2', 'ring-yellow-400', 'animate-pulse');
                     else card.classList.remove('ring-2', 'ring-yellow-400', 'animate-pulse');
                     
+                    // ✨ 삭제 애니메이션 클래스 갱신
+                    if (isBankrupt) {
+                        card.classList.add('animate-shake-fall', 'pointer-events-none', 'opacity-90');
+                        if(!card.querySelector('.bg-red-950\\/60')) card.insertAdjacentHTML('beforeend', overlayHTML);
+                    } else if (isMNA) {
+                        card.classList.add('animate-pop-explode', 'pointer-events-none');
+                        if(!card.querySelector('.animate-\\[bounce_0\\.5s_infinite\\]')) card.insertAdjacentHTML('beforeend', overlayHTML);
+                    }
+
                     const bgChartEl = document.getElementById(`bg-chart-${company.id}`);
                     if (bgChartEl) bgChartEl.innerHTML = generateMiniChartSVG(company.history, diff >= 0);
 
@@ -1238,6 +1307,7 @@
                     }
                 }
 
+                // 블록딜 퀘스트 시스템 타이머 및 배너 업데이트
                 if (state.status === 'PLAYING') {
                     const questBanner = document.getElementById('quest-banner');
                     
@@ -1505,14 +1575,17 @@
                 state.pendingEvents.addNew = false;
                 
                 if (!state.rugPullTarget && state.status === 'PLAYING' && Math.random() < 0.001) { 
-                    const targets = state.companies.filter(c => c.price < 10000);
+                    const targets = state.companies.filter(c => c.price < 10000 && !c.delistTimer);
                     if (targets.length > 0) {
                         const target = targets[Math.floor(Math.random() * targets.length)];
                         state.rugPullTarget = { companyId: target.id, ticksLeft: Math.floor(randomRange(15, 20)), phase: 'pump' };
                     }
                 }
 
+                // ✨ 상장폐지 애니메이션 중인 카드는 가격/타이머 변동 스킵
                 state.companies = state.companies.map(comp => {
+                    if (comp.delistTimer !== undefined) return comp; 
+
                     let changeMultiplier = 1 + randomRange(-comp.volatility, comp.volatility);
                     
                     if (state.rugPullTarget && state.rugPullTarget.companyId === comp.id) {
@@ -1576,13 +1649,8 @@
                     
                     let newHistory = [...comp.history.slice(1), newPrice];
 
-                    // ✨ [Feature 1] 서킷 브레이커 감지 (밸런스 패치 적용: 15틱, 70% 초과, 500 미네랄 이상)
-                    if (comp.haltTimer && comp.haltTimer > 0) {
-                        comp.haltTimer -= 1;
-                    }
-                    if (comp.haltCooldown && comp.haltCooldown > 0) {
-                        comp.haltCooldown -= 1;
-                    }
+                    if (comp.haltTimer && comp.haltTimer > 0) comp.haltTimer -= 1;
+                    if (comp.haltCooldown && comp.haltCooldown > 0) comp.haltCooldown -= 1;
 
                     if (newHistory.length >= 15) {
                         const pastPrice = newHistory[newHistory.length - 15];
@@ -1617,19 +1685,29 @@
                 state.activeImpacts = state.activeImpacts.filter(a => a.ticks > 0);
                 state.playerImpacts = []; 
 
-                const specialDelisted = state.companies.filter(c => c.price === 0);
-                const bankruptCompanies = state.companies.filter(c => c.price > 0 && c.price <= 50 && Math.random() < 0.06);
-                const allToDelist = [...specialDelisted, ...bankruptCompanies];
+                // ✨ 상장폐지(파산/M&A) 감지 및 큐잉
+                const newlyDelisted = state.companies.filter(c => 
+                    !c.delistTimer && 
+                    (c.price === 0 || (c.price > 0 && c.price <= 50 && Math.random() < 0.06))
+                );
 
-                let shortSqueezeGameOver = false;
-
-                if (allToDelist.length > 0) {
-                    allToDelist.forEach(bc => {
-                        
+                if (newlyDelisted.length > 0) {
+                    newlyDelisted.forEach(bc => {
+                        let isMNA = false;
                         if (bc.price > 0 && Math.random() < 0.20) {
+                            isMNA = true;
+                        }
+
+                        // ✨ 1.6초(8틱) 애니메이션 타이머 세팅
+                        bc.delistTimer = 8;
+                        bc.delistType = isMNA ? 'MNA' : 'BANKRUPT';
+
+                        const holding = state.portfolio[bc.id]?.quantity || 0;
+                        
+                        if (isMNA) {
                             const jumpMultiplier = randomRange(4.0, 6.0); 
                             const finalPrice = Math.floor(bc.price * jumpMultiplier);
-                            const holding = state.portfolio[bc.id]?.quantity || 0;
+                            bc.price = finalPrice; 
                             
                             if (holding !== 0) {
                                 if (holding > 0) {
@@ -1650,43 +1728,16 @@
                             });
 
                             if (holding < 0 && currentTotalAsset < 0) {
-                                state.status = 'LOSE';
-                                showOverlay('🚨 숏 스퀴즈 파산 (특수 패배)', `공매도 친 [${bc.name}]이(가) 대기업에 인수합병되며 주가가 폭등했습니다!\n부채가 순식간에 복사되어 파산했습니다.\n코프룰루 역사상 최악의 공매도 실패입니다...`, 'text-red-500', '1회차로 돌아가기');
-                                shortSqueezeGameOver = true;
+                                state.pendingShortSqueezeLoss = bc.name;
                             } else {
                                 addNotification(`🎉 [적대적 M&A 대박!] ${bc.name}이 우량 기업에 전격 인수되었습니다! 주주들에게 위로금이 지급되며 상장 폐지됩니다!`, 'success');
-                            }
-                            
-                            delete state.portfolio[bc.id];
-                            
-                            if(state.activeQuest && state.activeQuest.companyId === bc.id) {
-                                 state.activeQuest = null;
-                                 state.questCooldown = Math.floor(randomRange(60, 90));
-                                 const questBanner = document.getElementById('quest-banner');
-                                 if(questBanner) {
-                                     questBanner.classList.remove('translate-y-0');
-                                     questBanner.classList.add('-translate-y-[200%]');
-                                 }
                             }
                         } else {
                             const reason = DELIST_REASONS[Math.floor(Math.random() * DELIST_REASONS.length)];
                             addNotification(`[${bc.name}] ${reason} 상장폐지!`, 'error');
                             
-                            const holding = state.portfolio[bc.id]?.quantity || 0;
                             if (holding < 0) {
                                 addNotification(`📉 [공매도 대박] ${bc.name} 상장폐지로 부채 전액 탕감!`, 'success');
-                            }
-
-                            delete state.portfolio[bc.id];
-                            
-                            if(state.activeQuest && state.activeQuest.companyId === bc.id) {
-                                 state.activeQuest = null;
-                                 state.questCooldown = Math.floor(randomRange(60, 90));
-                                 const questBanner = document.getElementById('quest-banner');
-                                 if(questBanner) {
-                                     questBanner.classList.remove('translate-y-0');
-                                     questBanner.classList.add('-translate-y-[200%]');
-                                 }
                             }
 
                             if (bc.sector === '저그') {
@@ -1700,16 +1751,29 @@
                                 addNotification(`📉 [테란 뱅크런] 파산 충격으로 테란 금융계에 연쇄 부도 공포가 퍼집니다! (-5%)`, 'error');
                             }
                         }
+                        
+                        delete state.portfolio[bc.id];
+                        
+                        if(state.activeQuest && state.activeQuest.companyId === bc.id) {
+                             state.activeQuest = null;
+                             state.questCooldown = Math.floor(randomRange(60, 90));
+                             const questBanner = document.getElementById('quest-banner');
+                             if(questBanner) {
+                                 questBanner.classList.remove('translate-y-0');
+                                 questBanner.classList.add('-translate-y-[200%]');
+                             }
+                        }
                     });
-                    
-                    state.companies = state.companies.filter(c => !allToDelist.includes(c));
                 }
 
-                if (shortSqueezeGameOver) {
-                    clearInterval(gameInterval);
-                    clearInterval(timerInterval);
-                    return; 
-                }
+                // ✨ 애니메이션이 완료된 상장폐지 회사 배열에서 최종 삭제
+                state.companies = state.companies.filter(c => {
+                    if (c.delistTimer !== undefined) {
+                        c.delistTimer--;
+                        return c.delistTimer > 0;
+                    }
+                    return true;
+                });
 
                 if (shouldAddNew && state.companies.length < 15) { 
                     const randomSector = SECTORS[Math.floor(Math.random() * SECTORS.length)];
@@ -1748,6 +1812,20 @@
 
         // --- 승패 및 마진콜 로직 ---
         function checkWinLoss() {
+            // ✨ 상장폐지 애니메이션 중에는 패배 판정을 유예함
+            const isAnimating = state.companies.some(c => c.delistTimer && c.delistTimer > 0);
+            if (isAnimating) return;
+
+            // ✨ 숏 스퀴즈 파산 특수 오버레이 표시
+            if (state.pendingShortSqueezeLoss) {
+                state.status = 'LOSE';
+                showOverlay('🚨 숏 스퀴즈 파산 (특수 패배)', `공매도 친 [${state.pendingShortSqueezeLoss}]이(가) 대기업에 인수합병되며 주가가 폭등했습니다!\n부채가 순식간에 복사되어 파산했습니다.\n코프룰루 역사상 최악의 공매도 실패입니다...`, 'text-red-500', '1회차로 돌아가기');
+                state.pendingShortSqueezeLoss = null;
+                clearInterval(gameInterval);
+                clearInterval(timerInterval);
+                return;
+            }
+
             let stockValue = 0;
             Object.entries(state.portfolio).forEach(([id, data]) => {
                 const comp = state.companies.find(c => c.id === id);
@@ -1759,29 +1837,33 @@
             if (totalAsset < 0 && state.status === 'PLAYING') {
                 state.status = 'LOSE';
                 showOverlay('🚨 마진콜 (강제 청산)', `총 자산이 마이너스가 되어 켈모리안 용병단에 의해 우주 밖으로 방출되었습니다...`, 'text-red-500', '1회차로 돌아가기');
+                clearInterval(gameInterval);
+                clearInterval(timerInterval);
                 return;
             }
 
             const hasShortPosition = Object.values(state.portfolio).some(p => p.quantity < 0);
 
-            if (state.loan === 0 && totalAsset >= currentLevelData.goal && !hasShortPosition && state.status === 'PLAYING') {
+            // ✨ [Feature 1] 승리 조건: "현금(cash)"이 목표치 이상일 것 + 공매도 잔고 없을 것
+            if (state.loan === 0 && state.cash >= currentLevelData.goal && !hasShortPosition && state.status === 'PLAYING') {
                 state.status = 'WIN';
+                clearInterval(gameInterval);
+                clearInterval(timerInterval);
                 if (state.level < LEVEL_DATA.length) {
                     const nextLv = LEVEL_DATA[state.level];
-                    showOverlay(`🎉 ${currentLevelData.title.split(': ')[1]} (승리)`, `사채 상환 및 총 자산 ${formatMoney(currentLevelData.goal)} 미네랄 돌파!\n\n[다음 회차 해금]\n${nextLv.desc}`, 'text-yellow-400', '다음 회차 진입');
+                    showOverlay(`🎉 ${currentLevelData.title.split(': ')[1]} (승리)`, `사채 상환 및 현금 ${formatMoney(currentLevelData.goal)} 미네랄 돌파!\n\n[다음 회차 해금]\n${nextLv.desc}`, 'text-yellow-400', '다음 회차 진입');
                 } else {
                     showOverlay(`👑 코프룰루의 지배자 (최종 승리)`, `당신은 우주 최고의 재벌이 되었습니다.\n모든 회차를 클리어했습니다!`, 'text-yellow-400', '1회차로 돌아가기');
                 }
             } else if (state.loan === 0 && totalAsset < 1000 && state.status === 'PLAYING') {
                 state.status = 'LOSE';
+                clearInterval(gameInterval);
+                clearInterval(timerInterval);
                 showOverlay('☠️ 완전 파산 (패배)', `빚은 다 갚았지만 총 자산이 1,000 미네랄 미만으로 떨어졌습니다...\n저글링 밥으로 전락했습니다.`, 'text-red-500', '1회차로 돌아가기');
             }
         }
 
         function showOverlay(title, desc, titleClass, btnText = "처음으로 돌아가기") {
-            if (timerInterval) clearInterval(timerInterval);
-            if (gameInterval) clearInterval(gameInterval);
-            
             const overlay = document.getElementById('game-overlay');
             const titleEl = document.getElementById('overlay-title');
             const descEl = document.getElementById('overlay-desc');
@@ -1830,7 +1912,7 @@
 
             document.getElementById('start-overlay-title').innerText = lvData.title;
             document.getElementById('start-overlay-loan').innerText = `${formatMoney(lvData.loan)} 미네랄`;
-            document.getElementById('start-overlay-goal').innerText = `사채 전액 상환 및 총 자산 ${formatMoney(lvData.goal)} 돌파`;
+            document.getElementById('start-overlay-goal').innerText = `사채 전액 상환 및 현금 ${formatMoney(lvData.goal)} 돌파`;
             document.getElementById('start-overlay-desc').innerText = lvData.desc.replace(/🔓 /g, ''); 
 
             state = {
@@ -1851,6 +1933,7 @@
                 pendingEvents: { addNew: false },
                 
                 rugPullTarget: null,
+                pendingShortSqueezeLoss: null,
                 activeQuest: null,
                 questCooldown: 60,
                 
