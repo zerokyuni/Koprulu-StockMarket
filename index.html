@@ -30,7 +30,6 @@
             animation: fastBlink 0.25s infinite;
         }
         
-        /* ✨ [신규] 상장폐지(파산) 애니메이션 */
         @keyframes shakeAndFall {
             0% { transform: translateX(0) rotate(0); }
             10%, 30%, 50%, 70% { transform: translateX(-5px) rotate(-3deg); filter: grayscale(0.2); }
@@ -43,7 +42,6 @@
             z-index: 50;
         }
 
-        /* ✨ [신규] 상장폐지(M&A 대박) 애니메이션 */
         @keyframes popExplode {
             0% { transform: scale(1); opacity: 1; }
             20% { transform: scale(1.05); opacity: 1; filter: brightness(1.2); }
@@ -446,7 +444,7 @@
             pendingEvents: { addNew: false },
             
             rugPullTarget: null,
-            pendingShortSqueezeLoss: null, // ✨ 숏 스퀴즈 파산 지연 변수
+            pendingShortSqueezeLoss: null,
             
             terranDividendTimer: 10,
             activeQuest: null,
@@ -515,7 +513,7 @@
                 history: Array(MAX_HISTORY).fill(price),
                 volatility: vol,
                 haltTimer: 0,
-                haltCooldown: 0
+                haltCooldown: 0 
             };
         };
 
@@ -677,7 +675,6 @@
                 const victoryCurrent = document.getElementById('victory-current');
                 const victoryGoalText = document.getElementById('victory-goal-text');
 
-                // ✨ 승리 목표 진행바 현금 기준으로 수정
                 const progressPercent = Math.min((state.cash / currentLevelData.goal) * 100, 100);
                 victoryProgressFill.style.width = `${progressPercent}%`;
                 
@@ -872,7 +869,6 @@
                 const titleClass = state.level >= 4 ? 'cursor-pointer hover:text-yellow-300 transition-colors' : '';
                 const titleAction = state.level >= 4 ? `onclick="manipulateMarket('${company.id}')"` : '';
 
-                // ✨ 상장폐지 연출 클래스 추가
                 const isBankrupt = company.delistType === 'BANKRUPT';
                 const isMNA = company.delistType === 'MNA';
 
@@ -927,7 +923,6 @@
                     if(isQuestTarget) card.classList.add('ring-2', 'ring-yellow-400', 'animate-pulse');
                     else card.classList.remove('ring-2', 'ring-yellow-400', 'animate-pulse');
                     
-                    // ✨ 삭제 애니메이션 클래스 갱신
                     if (isBankrupt) {
                         card.classList.add('animate-shake-fall', 'pointer-events-none', 'opacity-90');
                         if(!card.querySelector('.bg-red-950\\/60')) card.insertAdjacentHTML('beforeend', overlayHTML);
@@ -1582,12 +1577,12 @@
                     }
                 }
 
-                // ✨ 상장폐지 애니메이션 중인 카드는 가격/타이머 변동 스킵
                 state.companies = state.companies.map(comp => {
                     if (comp.delistTimer !== undefined) return comp; 
 
                     let changeMultiplier = 1 + randomRange(-comp.volatility, comp.volatility);
                     
+                    // ✨ 작전세력 덤핑 강화 (초강력 폭락)
                     if (state.rugPullTarget && state.rugPullTarget.companyId === comp.id) {
                         if (state.rugPullTarget.phase === 'pump') {
                             changeMultiplier += randomRange(0.05, 0.10);
@@ -1596,7 +1591,7 @@
                                 state.rugPullTarget.phase = 'dump';
                             }
                         } else if (state.rugPullTarget.phase === 'dump') {
-                            changeMultiplier -= 0.60; 
+                            changeMultiplier -= randomRange(0.85, 0.95); 
                             addNotification(`😱 [작전 세력 이탈] ${comp.name}에 붙었던 작전 세력이 차익을 실현하고 도망쳤습니다! 개미들 대성통곡!`, 'error');
                             state.rugPullTarget = null;
                         }
@@ -1652,9 +1647,12 @@
                     if (comp.haltTimer && comp.haltTimer > 0) comp.haltTimer -= 1;
                     if (comp.haltCooldown && comp.haltCooldown > 0) comp.haltCooldown -= 1;
 
+                    // ✨ 서킷 브레이커 밸런스 완화: 작전주는 무조건 면역
                     if (newHistory.length >= 15) {
                         const pastPrice = newHistory[newHistory.length - 15];
-                        if (pastPrice > 500 && Math.abs(newPrice - pastPrice) / pastPrice >= 0.70) {
+                        const isRugPullTarget = state.rugPullTarget && state.rugPullTarget.companyId === comp.id;
+
+                        if (!isRugPullTarget && pastPrice > 500 && Math.abs(newPrice - pastPrice) / pastPrice >= 0.70) {
                             if ((!comp.haltTimer || comp.haltTimer <= 0) && (!comp.haltCooldown || comp.haltCooldown <= 0)) {
                                 comp.haltTimer = 25; 
                                 comp.haltCooldown = 150; 
@@ -1685,7 +1683,6 @@
                 state.activeImpacts = state.activeImpacts.filter(a => a.ticks > 0);
                 state.playerImpacts = []; 
 
-                // ✨ 상장폐지(파산/M&A) 감지 및 큐잉
                 const newlyDelisted = state.companies.filter(c => 
                     !c.delistTimer && 
                     (c.price === 0 || (c.price > 0 && c.price <= 50 && Math.random() < 0.06))
@@ -1698,7 +1695,6 @@
                             isMNA = true;
                         }
 
-                        // ✨ 1.6초(8틱) 애니메이션 타이머 세팅
                         bc.delistTimer = 8;
                         bc.delistType = isMNA ? 'MNA' : 'BANKRUPT';
 
@@ -1766,7 +1762,6 @@
                     });
                 }
 
-                // ✨ 애니메이션이 완료된 상장폐지 회사 배열에서 최종 삭제
                 state.companies = state.companies.filter(c => {
                     if (c.delistTimer !== undefined) {
                         c.delistTimer--;
@@ -1812,11 +1807,9 @@
 
         // --- 승패 및 마진콜 로직 ---
         function checkWinLoss() {
-            // ✨ 상장폐지 애니메이션 중에는 패배 판정을 유예함
             const isAnimating = state.companies.some(c => c.delistTimer && c.delistTimer > 0);
             if (isAnimating) return;
 
-            // ✨ 숏 스퀴즈 파산 특수 오버레이 표시
             if (state.pendingShortSqueezeLoss) {
                 state.status = 'LOSE';
                 showOverlay('🚨 숏 스퀴즈 파산 (특수 패배)', `공매도 친 [${state.pendingShortSqueezeLoss}]이(가) 대기업에 인수합병되며 주가가 폭등했습니다!\n부채가 순식간에 복사되어 파산했습니다.\n코프룰루 역사상 최악의 공매도 실패입니다...`, 'text-red-500', '1회차로 돌아가기');
@@ -1844,7 +1837,6 @@
 
             const hasShortPosition = Object.values(state.portfolio).some(p => p.quantity < 0);
 
-            // ✨ [Feature 1] 승리 조건: "현금(cash)"이 목표치 이상일 것 + 공매도 잔고 없을 것
             if (state.loan === 0 && state.cash >= currentLevelData.goal && !hasShortPosition && state.status === 'PLAYING') {
                 state.status = 'WIN';
                 clearInterval(gameInterval);
