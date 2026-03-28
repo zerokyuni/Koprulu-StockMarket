@@ -30,7 +30,7 @@
             animation: fastBlink 0.25s infinite;
         }
         
-        /* ✨ [수정됨] 50원 도달 시 좌우로 흔들리는 애니메이션 */
+        /* ✨ 50원 도달 시 좌우로 흔들리는 애니메이션 */
         @keyframes horizontalShake {
             0%, 100% { transform: translateX(0); }
             20%, 60% { transform: translateX(-4px); }
@@ -40,7 +40,7 @@
             animation: horizontalShake 0.4s infinite ease-in-out;
         }
 
-        /* ✨ [수정됨] 상장폐지 시 추락 애니메이션 */
+        /* ✨ 상장폐지 시 추락 애니메이션 */
         @keyframes fallDown {
             0% { transform: translateY(0) rotate(0); opacity: 1; }
             20% { transform: translateY(-10px) rotate(-5deg); opacity: 1; filter: brightness(0.8); }
@@ -51,7 +51,7 @@
             z-index: 50;
         }
 
-        /* ✨ [수정됨] M&A 성공 시 팡 터지는 애니메이션 */
+        /* ✨ M&A 성공 시 팡 터지는 애니메이션 */
         @keyframes popExplode {
             0% { transform: scale(1); opacity: 1; filter: brightness(1); }
             30% { transform: scale(1.15) rotate(3deg); opacity: 1; filter: brightness(1.5); }
@@ -880,13 +880,11 @@
 
                 const isBankrupt = company.delistType === 'BANKRUPT';
                 const isMNA = company.delistType === 'MNA';
-                // ✨ 50원에 도달했고, 현재 상장폐지/M&A 애니메이션 진행 중이 아닐 때
                 const isAtMinimum = company.price <= 50 && !company.delistTimer;
 
                 let animClass = '';
                 let overlayHTML = '';
 
-                // ✨ 상황별 애니메이션 클래스 할당 및 가독성을 높인 도장 레이아웃
                 if (isBankrupt) {
                     animClass = 'animate-fall-down pointer-events-none opacity-90';
                     overlayHTML = `<div class="absolute inset-0 flex items-center justify-center z-50 bg-slate-900/80 backdrop-blur-sm"><span class="text-xl sm:text-2xl font-black text-red-500 uppercase rotate-[-15deg] border-4 border-red-500 px-3 py-1 rounded-lg tracking-widest whitespace-nowrap shadow-[0_0_15px_rgba(239,68,68,0.6)] drop-shadow-md">상장폐지!</span></div>`;
@@ -937,7 +935,6 @@
                     if(isQuestTarget) card.classList.add('ring-2', 'ring-yellow-400', 'animate-pulse');
                     else card.classList.remove('ring-2', 'ring-yellow-400', 'animate-pulse');
                     
-                    // ✨ 삭제 또는 최소 가격 애니메이션 클래스 갱신
                     if (isBankrupt) {
                         card.classList.add('animate-fall-down', 'pointer-events-none', 'opacity-90');
                         card.classList.remove('animate-horizontal-shake', 'ring-1', 'ring-red-500/50');
@@ -1589,11 +1586,18 @@
                 const shouldAddNew = state.pendingEvents.addNew;
                 state.pendingEvents.addNew = false;
                 
+                // ✨ [Feature 2 수정됨] 작전 세력 일정 확률로 진입 (2~8초간, 8~20% 급등, 흔들기 추가)
                 if (!state.rugPullTarget && state.status === 'PLAYING' && Math.random() < 0.001) { 
                     const targets = state.companies.filter(c => c.price < 10000 && !c.delistTimer);
                     if (targets.length > 0) {
                         const target = targets[Math.floor(Math.random() * targets.length)];
-                        state.rugPullTarget = { companyId: target.id, ticksLeft: Math.floor(randomRange(15, 20)), phase: 'pump' };
+                        state.rugPullTarget = { 
+                            companyId: target.id, 
+                            ticksLeft: Math.floor(randomRange(10, 40)), // 2초 ~ 8초
+                            phase: 'pump',
+                            intensity: randomRange(0.08, 0.20), // 8% ~ 20%
+                            shakeChance: randomRange(0.1, 0.25) // 10% ~ 25% 확률로 흔들기
+                        };
                     }
                 }
 
@@ -1602,15 +1606,26 @@
 
                     let changeMultiplier = 1 + randomRange(-comp.volatility, comp.volatility);
                     
+                    // ✨ [Feature 2 수정됨] 작전 세력 펌프 앤 덤프 (극단적인 변동성 및 조기 먹튀 확률)
                     if (state.rugPullTarget && state.rugPullTarget.companyId === comp.id) {
                         if (state.rugPullTarget.phase === 'pump') {
-                            changeMultiplier += randomRange(0.05, 0.10);
+                            if (Math.random() < state.rugPullTarget.shakeChance) {
+                                // 흔들기(개미 털기) 발동: 일시적 하락
+                                changeMultiplier -= randomRange(0.05, 0.15);
+                            } else {
+                                // 평소 상승
+                                changeMultiplier += randomRange(0.02, state.rugPullTarget.intensity);
+                            }
+                            
                             state.rugPullTarget.ticksLeft -= 1;
-                            if (state.rugPullTarget.ticksLeft <= 0) {
+                            
+                            // 예정시간 다 됐거나 아주 낮은 확률로 중간에 이탈 (먹튀)
+                            if (state.rugPullTarget.ticksLeft <= 0 || (state.rugPullTarget.ticksLeft < 35 && Math.random() < 0.015)) {
                                 state.rugPullTarget.phase = 'dump';
                             }
                         } else if (state.rugPullTarget.phase === 'dump') {
-                            changeMultiplier -= randomRange(0.85, 0.95); 
+                            // 더 치명적인 폭락 (85% ~ 98%)
+                            changeMultiplier -= randomRange(0.85, 0.98); 
                             addNotification(`😱 [작전 세력 이탈] ${comp.name}에 붙었던 작전 세력이 차익을 실현하고 도망쳤습니다! 개미들 대성통곡!`, 'error');
                             state.rugPullTarget = null;
                         }
@@ -1666,6 +1681,7 @@
                     if (comp.haltTimer && comp.haltTimer > 0) comp.haltTimer -= 1;
                     if (comp.haltCooldown && comp.haltCooldown > 0) comp.haltCooldown -= 1;
 
+                    // 서킷 브레이커: 작전주는 대상에서 무조건 제외
                     if (newHistory.length >= 15) {
                         const pastPrice = newHistory[newHistory.length - 15];
                         const isRugPullTarget = state.rugPullTarget && state.rugPullTarget.companyId === comp.id;
@@ -1713,7 +1729,6 @@
                             isMNA = true;
                         }
 
-                        // ✨ 애니메이션 딜레이 증가 (15틱 = 3초 유지)
                         bc.delistTimer = 15;
                         bc.delistType = isMNA ? 'MNA' : 'BANKRUPT';
 
@@ -1826,7 +1841,6 @@
 
         // --- 승패 및 마진콜 로직 ---
         function checkWinLoss() {
-            // ✨ 상장폐지 애니메이션 중에는 패배 판정을 유예 (15틱, 3초간 보장됨)
             const isAnimating = state.companies.some(c => c.delistTimer && c.delistTimer > 0);
             if (isAnimating) return;
 
